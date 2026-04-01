@@ -1,0 +1,34 @@
+{
+  "name": "VortexFlow NCR",
+  "short_name": "VortexFlow",
+  "description": "نظام تتبع تقارير عدم المطابقة | Non-Conformance Report Tracking System",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0d1117",
+  "theme_color": "#f59e0b",
+  "orientation": "portrait",
+  "lang": "ar",
+  "dir": "rtl",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='72' fill='%230d1117'/%3E%3Ccircle cx='256' cy='220' r='160' fill='%23161b22' stroke='%23f59e0b' stroke-width='10'/%3E%3Cpolygon points='180,120 332,120 280,280 256,340 232,280' fill='%23f59e0b'/%3E%3Crect x='120' y='380' width='272' height='12' rx='6' fill='%23f59e0b' opacity='0.4'/%3E%3Ccircle cx='256' cy='448' r='24' fill='%23f59e0b' opacity='0.3'/%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='0' fill='%23f59e0b'/%3E%3Cpolygon points='180,100 332,100 290,280 256,360 222,280' fill='%230d1117'/%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "label": "VortexFlow NCR Dashboard",
+      "form_factor": "narrow"
+    }
+  ]
+}

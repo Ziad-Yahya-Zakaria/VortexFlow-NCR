@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#f59e0b">
+  <meta name="description" content="نظام تتبع تقارير عدم المطابقة | Non-Conformance Report Tracking">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="VortexFlow">
+  <meta name="msapplication-TileColor" content="#0d1117">
+  <title>VortexFlow NCR</title>
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            cairo: ['Cairo', 'sans-serif'],
+            rajdhani: ['Rajdhani', 'sans-serif'],
+          }
+        }
+      },
+      corePlugins: { preflight: false }
+    }
+  </script>
+</head>
+<body>
+
+  <!-- ============================================================
+       WELCOME / ONBOARDING MODAL
+       ============================================================ -->
+  <div id="welcome-modal" role="dialog" aria-modal="true" aria-label="مرحباً بك">
+    <div class="welcome-content">
+      <div class="welcome-logo" role="img" aria-label="VortexFlow Logo">V</div>
+
+      <div class="welcome-app-name">VortexFlow NCR</div>
+      <div class="welcome-tagline">نظام تتبع تقارير عدم المطابقة</div>
+      <div class="welcome-subtitle">ZiadPWA Ecosystem • v1.0.0</div>
+
+      <div class="welcome-features">
+        <div class="welcome-feature">
+          <i class="fas fa-wifi-slash" aria-hidden="true"></i>
+          <span>يعمل 100% بدون إنترنت — Fully Offline</span>
+        </div>
+        <div class="welcome-feature">
+          <i class="fas fa-database" aria-hidden="true"></i>
+          <span>يحفظ البيانات محلياً في جهازك — Local Storage</span>
+        </div>
+        <div class="welcome-feature">
+          <i class="fas fa-image" aria-hidden="true"></i>
+          <span>الصور والمستندات تُحفظ داخل قاعدة البيانات</span>
+        </div>
+        <div class="welcome-feature">
+          <i class="fas fa-shield-alt" aria-hidden="true"></i>
+          <span>نسخ احتياطي كامل مع حماية البيانات</span>
+        </div>
+        <div class="welcome-feature">
+          <i class="fas fa-clock" aria-hidden="true"></i>
+          <span>تتبع SLA تلقائي مع تنبيهات بصرية</span>
+        </div>
+      </div>
+
+      <p class="welcome-note">
+        سيطلب التطبيق إذناً لحفظ البيانات بشكل دائم على جهازك.
+        هذا يمنع نظام التشغيل من حذف بياناتك عند امتلاء مساحة التخزين.
+        <strong style="color:var(--vf-amber)">يُنصح بالموافقة للحفاظ على بياناتك.</strong>
+      </p>
+
+      <button id="btn-start-app" class="btn btn-primary btn-block btn-lg" onclick="completeOnboarding()">
+        <i class="fas fa-rocket"></i>
+        ابدأ الآن — Get Started
+      </button>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       MAIN APP CONTAINER
+       ============================================================ -->
+  <div id="app-container">
+
+    <!-- APP HEADER -->
+    <header id="app-header" role="banner">
+      <div class="header-logo">
+        <div class="logo-icon" aria-hidden="true">V</div>
+        <div>
+          <div class="header-title font-rajdhani">VortexFlow</div>
+          <div class="header-subtitle">NCR System</div>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button class="icon-btn amber" onclick="openExportSheet()" title="تصدير وبيانات" aria-label="فتح قائمة التصدير">
+          <i class="fas fa-share-nodes" aria-hidden="true"></i>
+        </button>
+        <button class="icon-btn" id="btn-sw-update" onclick="refreshApp()" title="تحديث التطبيق" aria-label="تحديث" style="display:none">
+          <i class="fas fa-rotate" aria-hidden="true"></i>
+        </button>
+        <button class="icon-btn" onclick="openExportSheet()" title="المزيد" aria-label="المزيد من الخيارات">
+          <i class="fas fa-ellipsis-vertical" aria-hidden="true"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN CONTENT (Views) -->
+    <main id="main-content" role="main">
+
+      <!-- ==========================================
+           VIEW: DASHBOARD
+           ========================================== -->
+      <section id="view-dashboard" class="view" role="region" aria-label="لوحة التحكم">
+
+        <!-- Hero / Stats -->
+        <div class="dashboard-hero">
+          <div class="view-title">لوحة التحكم</div>
+          <div class="view-heading">تقارير عدم المطابقة</div>
+
+          <!-- Stats Grid -->
+          <div class="stats-grid" id="stats-grid" role="group" aria-label="إحصائيات سريعة">
+            <div class="stat-card stat-total">
+              <div class="stat-number" id="stat-total">0</div>
+              <div class="stat-label">الكل</div>
+            </div>
+            <div class="stat-card stat-open">
+              <div class="stat-number" id="stat-open">0</div>
+              <div class="stat-label">مفتوح</div>
+            </div>
+            <div class="stat-card stat-progress">
+              <div class="stat-number" id="stat-progress">0</div>
+              <div class="stat-label">قيد العمل</div>
+            </div>
+            <div class="stat-card stat-closed">
+              <div class="stat-number" id="stat-closed">0</div>
+              <div class="stat-label">مغلق</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter Section -->
+        <div class="filter-section" role="search" aria-label="تصفية وبحث">
+
+          <!-- Month Filter -->
+          <div class="filter-row">
+            <span class="filter-label">الشهر:</span>
+            <div class="month-selector" id="month-selector" role="group" aria-label="تصفية بالشهر"></div>
+          </div>
+
+          <!-- Status Filter -->
+          <div class="filter-row">
+            <span class="filter-label">الحالة:</span>
+            <div class="filter-pills" role="group" aria-label="تصفية بالحالة">
+              <button class="filter-pill active" data-status="all" onclick="setStatusFilter('all', this)">الكل</button>
+              <button class="filter-pill status-open" data-status="Open" onclick="setStatusFilter('Open', this)">مفتوح</button>
+              <button class="filter-pill status-progress" data-status="In Progress" onclick="setStatusFilter('In Progress', this)">قيد العمل</button>
+              <button class="filter-pill status-closed" data-status="Closed" onclick="setStatusFilter('Closed', this)">مغلق</button>
+            </div>
+          </div>
+
+          <!-- Search -->
+          <div class="filter-row">
+            <div class="search-input-wrap">
+              <i class="fas fa-search" aria-hidden="true"></i>
+              <input
+                type="search"
+                id="search-input"
+                class="search-input"
+                placeholder="بحث في التقارير..."
+                oninput="handleSearch(this.value)"
+                aria-label="البحث في التقارير"
+                autocomplete="off"
+              >
+            </div>
+          </div>
+        </div>
+
+        <!-- NCR List -->
+        <div class="ncr-list" id="ncr-list" role="list" aria-label="قائمة تقارير عدم المطابقة">
+          <!-- Populated by JS -->
+        </div>
+      </section>
+
+      <!-- ==========================================
+           VIEW: ADD / EDIT NCR
+           ========================================== -->
+      <section id="view-add-ncr" class="view" role="region" aria-label="إضافة تقرير جديد">
+        <div class="view-form-container">
+
+          <div class="view-title" style="padding-top:8px">
+            <span id="form-view-label">إضافة تقرير جديد</span>
+          </div>
+          <div class="view-heading" id="form-view-heading">تقرير عدم مطابقة NCR</div>
+
+          <form id="ncr-form" novalidate onsubmit="handleNCRFormSubmit(event)">
+
+            <div class="form-section-title">
+              <i class="fas fa-hashtag" aria-hidden="true"></i>
+              معلومات الحالة
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label required" for="f-case-number">رقم الحالة</label>
+                <input
+                  type="text"
+                  id="f-case-number"
+                  class="form-control font-mono"
+                  placeholder="NCR-2024-0001"
+                  required
+                  autocomplete="off"
+                  dir="ltr"
+                >
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="f-sub-case">الحالة الفرعية</label>
+                <input
+                  type="text"
+                  id="f-sub-case"
+                  class="form-control"
+                  placeholder="مثال: A, B, 1"
+                  autocomplete="off"
+                >
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label required" for="f-description">وصف عدم المطابقة</label>
+              <textarea
+                id="f-description"
+                class="form-control"
+                rows="3"
+                placeholder="اكتب وصفاً تفصيلياً لعدم المطابقة..."
+                required
+              ></textarea>
+            </div>
+
+            <div class="form-section-title">
+              <i class="fas fa-sliders" aria-hidden="true"></i>
+              التصنيف والحالة
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label required" for="f-status">الحالة</label>
+                <select id="f-status" class="form-control" required>
+                  <option value="">-- اختر --</option>
+                  <option value="Open">مفتوح — Open</option>
+                  <option value="In Progress">قيد العمل — In Progress</option>
+                  <option value="Closed">مغلق — Closed</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="f-step">الخطوة / المرحلة</label>
+                <input
+                  type="number"
+                  id="f-step"
+                  class="form-control"
+                  placeholder="1"
+                  min="1"
+                  dir="ltr"
+                >
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="f-department">القسم المعني</label>
+              <select id="f-department" class="form-control">
+                <option value="">-- لا يوجد --</option>
+                <!-- Populated by JS -->
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="f-color">رمز اللون</label>
+              <div class="color-input-wrap">
+                <input type="color" id="f-color" value="#3b82f6">
+                <div class="color-presets" role="group" aria-label="ألوان مسبقة">
+                  <div class="color-preset" style="background:#ef4444" data-color="#ef4444" onclick="setColorPreset('#ef4444', this)" title="أحمر"></div>
+                  <div class="color-preset" style="background:#f59e0b" data-color="#f59e0b" onclick="setColorPreset('#f59e0b', this)" title="أصفر"></div>
+                  <div class="color-preset" style="background:#10b981" data-color="#10b981" onclick="setColorPreset('#10b981', this)" title="أخضر"></div>
+                  <div class="color-preset" style="background:#3b82f6" data-color="#3b82f6" onclick="setColorPreset('#3b82f6', this)" title="أزرق"></div>
+                  <div class="color-preset selected" style="background:#8b5cf6" data-color="#8b5cf6" onclick="setColorPreset('#8b5cf6', this)" title="بنفسجي"></div>
+                  <div class="color-preset" style="background:#06b6d4" data-color="#06b6d4" onclick="setColorPreset('#06b6d4', this)" title="سماوي"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-section-title">
+              <i class="fas fa-paperclip" aria-hidden="true"></i>
+              المرفقات
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="f-attachment">إرفاق مستند أو صورة</label>
+              <div class="file-upload-area" id="file-drop-zone">
+                <input
+                  type="file"
+                  id="f-attachment"
+                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+                  onchange="handleFileSelect(event)"
+                  aria-label="اختر ملفاً للإرفاق"
+                >
+                <div class="file-upload-icon"><i class="fas fa-cloud-upload-alt" aria-hidden="true"></i></div>
+                <div class="file-upload-text">اسحب الملف هنا أو اضغط للاختيار</div>
+                <div class="file-upload-hint">صور، PDF، Word، Excel — حد أقصى 10 ميجابايت</div>
+              </div>
+              <div id="file-preview-container" style="margin-top:8px"></div>
+            </div>
+
+            <!-- Hidden: editing mode -->
+            <input type="hidden" id="f-editing-id" value="">
+
+            <div class="btn-group">
+              <button type="button" class="btn btn-secondary" onclick="cancelNCRForm()">
+                <i class="fas fa-times" aria-hidden="true"></i>
+                إلغاء
+              </button>
+              <button type="submit" class="btn btn-primary" id="btn-submit-ncr">
+                <i class="fas fa-save" aria-hidden="true"></i>
+                <span id="submit-btn-text">حفظ التقرير</span>
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           VIEW: DEPARTMENTS
+           ========================================== -->
+      <section id="view-departments" class="view" role="region" aria-label="الأقسام">
+        <div class="dashboard-hero" style="padding-bottom:20px">
+          <div class="view-title">الأقسام</div>
+          <div class="view-heading">إدارة الأقسام والدعوات</div>
+
+          <!-- Add Department Form -->
+          <form id="dept-form" onsubmit="handleDeptFormSubmit(event)" style="margin-top:4px">
+            <div class="flex-center" style="gap:8px">
+              <input type="hidden" id="dept-editing-id" value="">
+              <input
+                type="text"
+                id="f-dept-name"
+                class="form-control"
+                placeholder="اسم القسم الجديد..."
+                required
+                style="flex:1"
+              >
+              <button type="submit" class="btn btn-primary btn-sm" id="btn-save-dept" style="flex-shrink:0">
+                <i class="fas fa-plus" aria-hidden="true"></i>
+                <span id="dept-btn-text">إضافة</span>
+              </button>
+              <button type="button" class="btn btn-secondary btn-sm hidden" id="btn-cancel-dept" onclick="cancelDeptEdit()" style="flex-shrink:0">
+                <i class="fas fa-times" aria-hidden="true"></i>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Department List -->
+        <div class="dept-list" id="dept-list" role="list" aria-label="قائمة الأقسام">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Invitations Section -->
+        <div style="padding:0 16px 16px">
+          <div class="form-section-title" style="margin-top:16px">
+            <i class="fas fa-envelope" aria-hidden="true"></i>
+            سجل الدعوات
+          </div>
+          <div id="inv-list" role="list" aria-label="قائمة الدعوات">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </section>
+
+    </main><!-- /main-content -->
+
+    <!-- FAB (Floating Action Button) -->
+    <button id="fab" onclick="quickAddNCR()" aria-label="إضافة تقرير جديد بسرعة" title="إضافة تقرير">
+      <i class="fas fa-plus" aria-hidden="true"></i>
+    </button>
+
+    <!-- BOTTOM NAVIGATION -->
+    <nav id="bottom-nav" role="navigation" aria-label="التنقل الرئيسي">
+      <button class="nav-item active" id="nav-dashboard" data-view="dashboard" onclick="navigateTo('dashboard')" aria-label="لوحة التحكم" aria-current="page">
+        <i class="fas fa-chart-line" aria-hidden="true"></i>
+        <span>الرئيسية</span>
+      </button>
+      <button class="nav-item" id="nav-add-ncr" data-view="add-ncr" onclick="navigateTo('add-ncr')" aria-label="إضافة تقرير">
+        <i class="fas fa-plus-circle" aria-hidden="true"></i>
+        <span>إضافة</span>
+      </button>
+      <button class="nav-item" id="nav-departments" data-view="departments" onclick="navigateTo('departments')" aria-label="الأقسام">
+        <i class="fas fa-building" aria-hidden="true"></i>
+        <span>الأقسام</span>
+      </button>
+    </nav>
+
+  </div><!-- /app-container -->
+
+  <!-- ============================================================
+       MODAL: NCR DETAIL / VIEW
+       ============================================================ -->
+  <div id="ncr-detail-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="تفاصيل التقرير">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title" id="detail-modal-title">تفاصيل التقرير</div>
+          <div id="detail-modal-case-num" class="text-muted fs-xs font-mono" style="direction:ltr;text-align:left"></div>
+        </div>
+        <button class="modal-close" onclick="closeNCRDetailModal()" aria-label="إغلاق">
+          <i class="fas fa-times" aria-hidden="true"></i>
+        </button>
+      </div>
+      <div class="modal-body" id="detail-modal-body">
+        <!-- Populated by JS -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" onclick="closeNCRDetailModal()">
+          <i class="fas fa-arrow-right" aria-hidden="true"></i>
+          رجوع
+        </button>
+        <button class="btn btn-outline btn-sm" id="detail-edit-btn" onclick="editNCRFromDetail()">
+          <i class="fas fa-pen" aria-hidden="true"></i>
+          تعديل
+        </button>
+        <button class="btn btn-sm" style="background:rgba(139,92,246,0.15);color:#a78bfa;border:1px solid rgba(139,92,246,0.25)" id="detail-invite-btn" onclick="openInviteFromDetail()">
+          <i class="fas fa-envelope" aria-hidden="true"></i>
+          دعوة
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       MODAL: SEND INVITATION
+       ============================================================ -->
+  <div id="invite-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="إرسال دعوة">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-title">إرسال دعوة</div>
+        <button class="modal-close" onclick="closeInviteModal()" aria-label="إغلاق">
+          <i class="fas fa-times" aria-hidden="true"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="invite-form" onsubmit="handleInviteSubmit(event)">
+          <input type="hidden" id="inv-ncr-id" value="">
+
+          <div class="form-group">
+            <label class="form-label required" for="inv-dept-select">القسم</label>
+            <select id="inv-dept-select" class="form-control" required>
+              <option value="">-- اختر القسم --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label required" for="inv-assignee">المسؤول</label>
+            <input
+              type="text"
+              id="inv-assignee"
+              class="form-control"
+              placeholder="مثال: عبد الله علي"
+              required
+            >
+          </div>
+
+          <div class="form-group">
+            <label class="form-label required" for="inv-status">حالة الدعوة</label>
+            <select id="inv-status" class="form-control" required>
+              <option value="Update">تحديث — Update</option>
+              <option value="Cancel">إلغاء — Cancel</option>
+            </select>
+          </div>
+
+          <div class="btn-group">
+            <button type="button" class="btn btn-secondary" onclick="closeInviteModal()">إلغاء</button>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-paper-plane" aria-hidden="true"></i>
+              إرسال الدعوة
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       BOTTOM SHEET: EXPORT & BACKUP
+       ============================================================ -->
+  <div id="export-sheet-overlay" class="bottom-sheet-overlay" role="dialog" aria-modal="true" aria-label="تصدير وبيانات">
+    <div class="bottom-sheet">
+      <div class="sheet-handle" role="presentation"></div>
+      <div class="sheet-title">
+        <i class="fas fa-share-nodes" style="color:var(--vf-amber);margin-left:6px" aria-hidden="true"></i>
+        تصدير البيانات والنسخ الاحتياطي
+      </div>
+
+      <div class="sheet-section-label">تصدير التقارير المصفاة</div>
+      <div class="sheet-grid">
+        <button class="export-btn pdf" onclick="exportToPDF()" aria-label="تصدير PDF">
+          <i class="fas fa-file-pdf" aria-hidden="true"></i>
+          <span>PDF</span>
+        </button>
+        <button class="export-btn xlsx" onclick="exportToXLSX()" aria-label="تصدير Excel">
+          <i class="fas fa-file-excel" aria-hidden="true"></i>
+          <span>Excel (XLSX)</span>
+        </button>
+        <button class="export-btn pptx" onclick="exportToPPTX()" aria-label="تصدير PowerPoint">
+          <i class="fas fa-file-powerpoint" aria-hidden="true"></i>
+          <span>PowerPoint</span>
+        </button>
+        <button class="export-btn zip" onclick="exportToZIP()" aria-label="تصدير ZIP">
+          <i class="fas fa-file-zipper" aria-hidden="true"></i>
+          <span>ZIP Bundle</span>
+        </button>
+      </div>
+
+      <div class="sheet-divider"></div>
+      <div class="sheet-section-label">مشاركة ونسخ احتياطي</div>
+      <div class="sheet-grid">
+        <button class="export-btn share" onclick="shareAppSummary()" aria-label="مشاركة">
+          <i class="fas fa-share-alt" aria-hidden="true"></i>
+          <span>مشاركة</span>
+        </button>
+        <button class="export-btn backup" onclick="backupAllData()" aria-label="نسخ احتياطي">
+          <i class="fas fa-cloud-arrow-down" aria-hidden="true"></i>
+          <span>نسخ احتياطي</span>
+        </button>
+        <button class="export-btn restore" onclick="triggerRestore()" aria-label="استعادة النسخة الاحتياطية">
+          <i class="fas fa-cloud-arrow-up" aria-hidden="true"></i>
+          <span>استعادة</span>
+        </button>
+      </div>
+
+      <input type="file" id="restore-file-input" accept=".json" onchange="restoreFromBackup(event)" style="display:none" aria-label="اختر ملف النسخة الاحتياطية">
+
+      <div style="padding:4px 16px 0">
+        <button class="btn btn-secondary btn-block btn-sm" onclick="closeExportSheet()" style="margin-bottom:4px">
+          <i class="fas fa-times" aria-hidden="true"></i>
+          إغلاق
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" role="region" aria-label="الإشعارات" aria-live="polite"></div>
+
+  <!-- ============================================================
+       EXTERNAL LIBRARIES (CDN)
+       ============================================================ -->
+
+  <!-- localForage (IndexedDB wrapper) -->
+  <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+
+  <!-- SheetJS (Excel export) -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
+  <!-- jsPDF (PDF export) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <!-- jsPDF AutoTable plugin -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+  <!-- PptxGenJS (PowerPoint export) -->
+  <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+
+  <!-- JSZip (ZIP bundling) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <!-- FileSaver.js (File download fallback) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+  <!-- Main Application Script -->
+  <script src="app.js"></script>
+
+</body>
+</html>
