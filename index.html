@@ -12,6 +12,8 @@
   <meta name="msapplication-TileColor" content="#0d1117">
   <title>VortexFlow NCR</title>
   <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="assets/icons/vortexflow-ncr-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/icons/vortexflow-ncr-icon.svg">
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,6 +26,7 @@
   <!-- Custom Styles -->
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="enterprise.css">
+  <link rel="stylesheet" href="enterprise-plus.css">
 
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -49,7 +52,9 @@
        ============================================================ -->
   <div id="welcome-modal" role="dialog" aria-modal="true" aria-label="مرحباً بك">
     <div class="welcome-content">
-      <div class="welcome-logo" role="img" aria-label="VortexFlow Logo">V</div>
+      <div class="welcome-logo has-image" role="img" aria-label="VortexFlow Logo">
+        <img src="assets/icons/vortexflow-ncr-icon.svg" alt="VortexFlow NCR" class="brand-logo-image">
+      </div>
 
       <div class="welcome-app-name">VortexFlow NCR</div>
       <div class="welcome-tagline">نظام تتبع تقارير عدم المطابقة</div>
@@ -99,7 +104,9 @@
     <!-- APP HEADER -->
     <header id="app-header" role="banner">
       <div class="header-logo">
-        <div class="logo-icon" aria-hidden="true">V</div>
+        <div class="logo-icon has-image" aria-hidden="true">
+          <img src="assets/icons/vortexflow-ncr-icon.svg" alt="VortexFlow NCR" class="brand-logo-image">
+        </div>
         <div>
           <div class="header-title font-rajdhani">VortexFlow</div>
           <div class="header-subtitle">NCR System</div>
@@ -477,6 +484,19 @@
                 <input id="s-print-subtitle" class="form-control" type="text" placeholder="مثال: سجل تقارير عدم المطابقة">
               </div>
 
+              <div class="form-group">
+                <label class="form-label" for="s-logo-file">شعار الشركة</label>
+                <div class="logo-upload-panel">
+                  <input id="s-logo-file" class="form-control" type="file" accept="image/*" onchange="handleLogoSelect(event)">
+                  <div class="settings-logo-copy">يرفع الشعار محلياً ويستخدم في الهيدر وشاشة الدخول والطباعة.</div>
+                  <div id="settings-logo-preview" class="settings-logo-preview is-empty"></div>
+                  <button type="button" class="btn btn-secondary btn-sm hidden" id="btn-remove-logo" onclick="removeCompanyLogo()">
+                    <i class="fas fa-trash" aria-hidden="true"></i>
+                    إزالة الشعار
+                  </button>
+                </div>
+              </div>
+
               <div class="toggle-grid">
                 <label class="setting-toggle">
                   <input id="s-show-onboarding" type="checkbox" checked>
@@ -794,6 +814,9 @@
   <!-- jsPDF AutoTable plugin -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 
+  <!-- HTML2Canvas (Visual PDF/PPT export to preserve Arabic layout) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
   <!-- PptxGenJS (PowerPoint export) -->
   <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 
@@ -806,6 +829,7 @@
   <!-- Main Application Script -->
   <script src="app.js"></script>
   <script src="enterprise.js"></script>
+  <script src="enterprise-plus.js"></script>
 
 </body>
 </html>

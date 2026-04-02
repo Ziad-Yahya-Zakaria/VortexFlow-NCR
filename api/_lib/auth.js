@@ -160,6 +160,8 @@ async function getSessionUser(req) {
       u.full_name,
       u.email,
       u.role,
+      u.job_title,
+      u.is_verified,
       u.is_active,
       u.created_at,
       u.updated_at,

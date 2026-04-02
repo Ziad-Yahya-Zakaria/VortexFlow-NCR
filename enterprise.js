@@ -12,6 +12,7 @@
     siteName: 'Main Facility',
     casePrefix: 'NCR',
     accentColor: '#f59e0b',
+    logoData: null,
     printSubtitle: 'سجل تقارير عدم المطابقة',
     slaWarningDays: 3,
     slaCriticalDays: 5,
@@ -40,7 +41,7 @@
   };
 
   Object.assign(APP_CONFIG, {
-    version: '2.0.0',
+    version: '2.1.0',
     MAX_LOCAL_FILE_SIZE: 10 * 1024 * 1024,
     MAX_REMOTE_FILE_SIZE: 3 * 1024 * 1024,
     PRIORITY_LABELS: {
@@ -58,13 +59,37 @@
       admin: 'Admin',
       engineer: 'Engineer',
       viewer: 'Viewer'
+    },
+    CATEGORY_LABELS: {
+      Process: 'عملية',
+      Product: 'منتج',
+      Supplier: 'مورد',
+      Customer: 'عميل',
+      Safety: 'سلامة',
+      Documentation: 'توثيق'
+    },
+    SOURCE_LABELS: {
+      Internal: 'داخلي',
+      Customer: 'عميل',
+      Audit: 'تدقيق',
+      Supplier: 'مورد',
+      Production: 'إنتاج',
+      Field: 'موقع'
+    },
+    VERIFICATION_LABELS: {
+      Pending: 'قيد الانتظار',
+      Ready: 'جاهز للتحقق',
+      Verified: 'تم التحقق'
     }
   });
+  const APP_BRAND_ICON = 'assets/icons/vortexflow-ncr-icon.svg';
 
   Object.assign(state, {
     users: [],
     currentUser: null,
     templates: [],
+    formChecklist: [],
+    managingUserId: null,
     settings: { ...DEFAULT_SETTINGS },
     backend: {
       available: false,
@@ -100,6 +125,10 @@
       .split(',')
       .map(item => item.trim())
       .filter(Boolean);
+  }
+
+  function getAttachmentSource(attachedDocument) {
+    return attachedDocument?.url || attachedDocument?.base64 || '';
   }
 
   function loadCustomization() {
@@ -152,6 +181,7 @@
     const headerSubtitle = document.querySelector('.header-subtitle');
     const welcomeName = document.querySelector('.welcome-app-name');
     const welcomeSubtitle = document.querySelector('.welcome-subtitle');
+    const logoNodes = document.querySelectorAll('.logo-icon, .welcome-logo, .print-logo');
 
     if (headerTitle) {
       headerTitle.textContent = orgName;
@@ -165,6 +195,168 @@
     if (welcomeSubtitle) {
       welcomeSubtitle.textContent = `${siteName} • v${APP_CONFIG.version}`;
     }
+
+    logoNodes.forEach(node => {
+      if (!(node instanceof HTMLElement)) {
+        return;
+      }
+
+      if (state.settings.logoData) {
+        node.classList.add('has-image');
+        node.innerHTML = `<img src="${state.settings.logoData}" alt="${escapeHTML(orgName)} Logo" class="brand-logo-image">`;
+      } else {
+        node.classList.add('has-image');
+        node.innerHTML = `<img src="${APP_BRAND_ICON}" alt="VortexFlow NCR" class="brand-logo-image">`;
+      }
+    });
+
+    const printRoot = document.getElementById('print-root');
+    if (printRoot) {
+      printRoot.style.setProperty('--print-accent', accent);
+    }
+  }
+
+  function renderLogoPreview() {
+    const preview = document.getElementById('settings-logo-preview');
+    const removeButton = document.getElementById('btn-remove-logo');
+    const fileInput = document.getElementById('s-logo-file');
+    if (!preview) {
+      return;
+    }
+
+    if (state.settings.logoData) {
+      preview.classList.remove('is-empty');
+      preview.innerHTML = `
+        <div class="settings-logo-thumb">
+          <img src="${state.settings.logoData}" alt="${escapeHTML(state.settings.orgName || 'Company')} Logo" class="brand-logo-image">
+        </div>
+        <div>
+          <div class="settings-logo-title">${escapeHTML(state.settings.orgName || 'الشركة')}</div>
+          <div class="settings-logo-copy">سيتم استخدام الشعار في الهيدر وشاشة الدخول والطباعة.</div>
+        </div>
+      `;
+      removeButton?.classList.remove('hidden');
+    } else {
+      preview.classList.add('is-empty');
+      preview.innerHTML = `
+        <div class="settings-logo-placeholder">
+          <i class="fas fa-image" aria-hidden="true"></i>
+          <span>لا يوجد شعار مرفوع حالياً</span>
+        </div>
+      `;
+      removeButton?.classList.add('hidden');
+      if (fileInput) {
+        fileInput.value = '';
+      }
+    }
+  }
+
+  function renderChecklistEditor() {
+    const container = document.getElementById('checklist-editor');
+    if (!container) {
+      return;
+    }
+
+    const checklist = normalizeChecklist(state.formChecklist);
+    state.formChecklist = checklist;
+    const progress = getChecklistProgress(checklist);
+
+    if (!checklist.length) {
+      container.innerHTML = `
+        <div class="checklist-empty">
+          <i class="fas fa-list-check" aria-hidden="true"></i>
+          <span>لم تتم إضافة عناصر تحقق بعد.</span>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="checklist-summary">
+        <div class="checklist-summary-head">
+          <strong>${progress.completed}/${progress.total}</strong>
+          <span>${progress.percent}% مكتمل</span>
+        </div>
+        <div class="checklist-progress">
+          <span class="checklist-progress-bar" style="width:${progress.percent}%"></span>
+        </div>
+      </div>
+      <div class="checklist-list">
+        ${checklist.map(item => `
+          <div class="checklist-item ${item.done ? 'done' : ''}">
+            <button type="button" class="checklist-toggle" onclick="toggleChecklistDraftItem('${item.id}')" aria-pressed="${item.done ? 'true' : 'false'}">
+              <i class="fas ${item.done ? 'fa-check-circle' : 'fa-circle'}" aria-hidden="true"></i>
+            </button>
+            <div class="checklist-copy">
+              <div class="checklist-label">${escapeHTML(item.label)}</div>
+              <div class="checklist-state">${item.done ? 'تم التحقق منه' : 'بانتظار التنفيذ'}</div>
+            </div>
+            <button type="button" class="icon-btn" onclick="removeChecklistItem('${item.id}')" aria-label="حذف عنصر التحقق">
+              <i class="fas fa-trash" aria-hidden="true"></i>
+            </button>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function buildChecklistMarkup(checklist, options = {}) {
+    const items = normalizeChecklist(checklist);
+    const progress = getChecklistProgress(items);
+    const canToggle = !!options.canToggle;
+    const caseId = options.caseId || '';
+
+    if (!items.length) {
+      return '<div class="checklist-empty"><i class="fas fa-list-check" aria-hidden="true"></i><span>لا توجد عناصر تحقق مسجلة.</span></div>';
+    }
+
+    return `
+      <div class="checklist-summary">
+        <div class="checklist-summary-head">
+          <strong>${progress.completed}/${progress.total}</strong>
+          <span>${progress.percent}% مكتمل</span>
+        </div>
+        <div class="checklist-progress">
+          <span class="checklist-progress-bar" style="width:${progress.percent}%"></span>
+        </div>
+      </div>
+      <div class="checklist-list">
+        ${items.map(item => `
+          <div class="checklist-item ${item.done ? 'done' : ''}">
+            ${canToggle
+              ? `<button type="button" class="checklist-toggle" onclick="toggleChecklistItemOnCase('${caseId}', '${item.id}')" aria-pressed="${item.done ? 'true' : 'false'}">
+                  <i class="fas ${item.done ? 'fa-check-circle' : 'fa-circle'}" aria-hidden="true"></i>
+                </button>`
+              : `<span class="checklist-toggle readonly" aria-hidden="true"><i class="fas ${item.done ? 'fa-check-circle' : 'fa-circle'}"></i></span>`}
+            <div class="checklist-copy">
+              <div class="checklist-label">${escapeHTML(item.label)}</div>
+              <div class="checklist-state">${item.done ? 'تم التحقق منه' : 'لم يتم التحقق بعد'}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function collectAuthPayload(prefix) {
+    const setupMode = state.backend.authMode === 'setup';
+    const fullName = document.getElementById(`${prefix}full-name`)?.value.trim() || '';
+    const email = document.getElementById(`${prefix}email`)?.value.trim() || '';
+    const password = document.getElementById(`${prefix}password`)?.value || '';
+
+    if (setupMode && !fullName) {
+      throw new Error('الاسم الكامل مطلوب لإعداد الحساب الأول.');
+    }
+
+    if (!email || !password) {
+      throw new Error('البريد الإلكتروني وكلمة المرور حقول مطلوبة.');
+    }
+
+    return {
+      fullName,
+      email,
+      password
+    };
   }
 
   function formatLastSync(timestamp) {
@@ -227,6 +419,91 @@
 
     const target = map[severity] || map.Major;
     return `<span class="badge ${target.cls}">${escapeHTML(APP_CONFIG.SEVERITY_LABELS[severity] || target.label)}</span>`;
+  }
+
+  function getVerificationBadge(status) {
+    const map = {
+      Pending: { cls: 'badge-gray', label: 'قيد الانتظار' },
+      Ready: { cls: 'badge-amber', label: 'جاهز للتحقق' },
+      Verified: { cls: 'badge-green', label: 'تم التحقق' }
+    };
+
+    const target = map[status] || map.Pending;
+    return `<span class="badge ${target.cls}">${escapeHTML(target.label)}</span>`;
+  }
+
+  function getChecklistProgress(checklist) {
+    const items = Array.isArray(checklist) ? checklist : [];
+    const total = items.length;
+    const completed = items.filter(item => item.done).length;
+    return {
+      total,
+      completed,
+      percent: total ? Math.round((completed / total) * 100) : 0
+    };
+  }
+
+  function normalizeChecklist(value) {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    return value
+      .map(item => ({
+        id: String(item?.id || generateId()),
+        label: String(item?.label || '').trim(),
+        done: !!item?.done,
+        note: String(item?.note || '').trim()
+      }))
+      .filter(item => item.label);
+  }
+
+  function deriveVerificationStatus(checklist, fallback = 'Pending') {
+    const progress = getChecklistProgress(checklist);
+    if (!progress.total) {
+      return fallback || 'Pending';
+    }
+
+    if (progress.completed === progress.total) {
+      return 'Verified';
+    }
+
+    if (progress.completed > 0) {
+      return 'Ready';
+    }
+
+    return fallback === 'Verified' ? 'Ready' : (fallback || 'Pending');
+  }
+
+  function getCategoryLabel(category) {
+    return APP_CONFIG.CATEGORY_LABELS[category] || category || '—';
+  }
+
+  function getSourceLabel(source) {
+    return APP_CONFIG.SOURCE_LABELS[source] || source || '—';
+  }
+
+  function getVerificationLabel(status) {
+    return APP_CONFIG.VERIFICATION_LABELS[status] || status || '—';
+  }
+
+  function normalizeNcrRecord(ncr) {
+    if (!ncr) {
+      return null;
+    }
+
+    const checklist = normalizeChecklist(ncr?.checklist);
+    return {
+      ...ncr,
+      priority: ncr?.priority || 'Medium',
+      severity: ncr?.severity || 'Major',
+      category: ncr?.category || 'Process',
+      source: ncr?.source || 'Internal',
+      containmentAction: ncr?.containmentAction || '',
+      tags: parseTags(ncr?.tags),
+      checklist,
+      verificationStatus: deriveVerificationStatus(checklist, ncr?.verificationStatus || 'Pending')
+    };
   }
 
   async function apiRequest(path, options = {}) {
@@ -319,6 +596,30 @@
         `
           <div class="form-row">
             <div class="form-group">
+              <label class="form-label" for="f-category">التصنيف</label>
+              <select id="f-category" class="form-control">
+                <option value="Process">عملية</option>
+                <option value="Product">منتج</option>
+                <option value="Supplier">مورد</option>
+                <option value="Customer">عميل</option>
+                <option value="Safety">سلامة</option>
+                <option value="Documentation">توثيق</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="f-source">المصدر</label>
+              <select id="f-source" class="form-control">
+                <option value="Internal">داخلي</option>
+                <option value="Customer">عميل</option>
+                <option value="Audit">تدقيق</option>
+                <option value="Supplier">مورد</option>
+                <option value="Production">إنتاج</option>
+                <option value="Field">موقع</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
               <label class="form-label" for="f-priority">الأولوية</label>
               <select id="f-priority" class="form-control">
                 <option value="Medium">متوسطة</option>
@@ -333,6 +634,14 @@
                 <option value="Major">جوهري</option>
                 <option value="Minor">طفيف</option>
                 <option value="Critical">حرج</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="f-verification-status">حالة التحقق</label>
+              <select id="f-verification-status" class="form-control">
+                <option value="Pending">قيد الانتظار</option>
+                <option value="Ready">جاهز للتحقق</option>
+                <option value="Verified">تم التحقق</option>
               </select>
             </div>
           </div>
@@ -359,12 +668,36 @@
             >
           </div>
           <div class="form-group">
+            <label class="form-label" for="f-containment-action">الإجراء الاحتوائي</label>
+            <textarea id="f-containment-action" class="form-control" rows="2" placeholder="ما الإجراء الفوري لمنع التوسع؟"></textarea>
+          </div>
+          <div class="form-group">
             <label class="form-label" for="f-root-cause">السبب الجذري</label>
             <textarea id="f-root-cause" class="form-control" rows="2" placeholder="ما سبب عدم المطابقة؟"></textarea>
           </div>
           <div class="form-group">
             <label class="form-label" for="f-corrective-action">الإجراء التصحيحي</label>
             <textarea id="f-corrective-action" class="form-control" rows="2" placeholder="ما الإجراء المطلوب؟"></textarea>
+          </div>
+          <div class="form-section-title">
+            <i class="fas fa-list-check" aria-hidden="true"></i>
+            قائمة التحقق
+          </div>
+          <div class="checklist-builder">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="f-checklist-item">عنصر التحقق</label>
+                <input id="f-checklist-item" class="form-control" type="text" placeholder="مثال: مراجعة أبعاد القطعة">
+              </div>
+              <div class="form-group">
+                <label class="form-label">&nbsp;</label>
+                <button type="button" class="btn btn-secondary btn-sm btn-block" onclick="addChecklistItemFromForm()">
+                  <i class="fas fa-check-double" aria-hidden="true"></i>
+                  إضافة عنصر
+                </button>
+              </div>
+            </div>
+            <div id="checklist-editor" class="checklist-editor"></div>
           </div>
         `
       );
@@ -411,6 +744,7 @@
                   </button>
                 </div>
               </form>
+              <div id="user-dashboard-metrics" class="ops-grid" style="padding:16px 0 0"></div>
             </div>
             <div class="section-card">
               <div class="section-card-head">
@@ -435,6 +769,54 @@
             <i class="fas fa-users" aria-hidden="true"></i>
             <span>المستخدمون</span>
           </button>
+        `
+      );
+    }
+
+    if (!document.getElementById('auth-screen')) {
+      document.body.insertAdjacentHTML(
+        'beforeend',
+        `
+          <div id="auth-screen" class="auth-screen hidden" aria-hidden="true">
+            <div class="auth-screen-panel">
+              <div class="auth-screen-brand">
+                <div class="welcome-logo has-image" role="img" aria-label="Company Logo">
+                  <img src="${APP_BRAND_ICON}" alt="VortexFlow NCR" class="brand-logo-image">
+                </div>
+                <div>
+                  <div class="auth-screen-title">دخول النظام</div>
+                  <div class="auth-screen-subtitle">منصة NCR المؤسسية</div>
+                </div>
+              </div>
+              <div class="auth-screen-features">
+                <div class="auth-screen-feature"><i class="fas fa-shield-halved" aria-hidden="true"></i><span>جلسات آمنة وصلاحيات تشغيل</span></div>
+                <div class="auth-screen-feature"><i class="fas fa-users-gear" aria-hidden="true"></i><span>لوحة تحكم للمستخدمين والحسابات</span></div>
+                <div class="auth-screen-feature"><i class="fas fa-list-check" aria-hidden="true"></i><span>متابعة NCR مع Checklists والتحقق</span></div>
+              </div>
+            </div>
+            <div class="auth-screen-form-wrap">
+              <form id="auth-screen-form" class="auth-screen-form" onsubmit="handleAuthScreenSubmit(event)">
+                <div class="section-card-title" id="auth-screen-title">تسجيل الدخول</div>
+                <div class="section-card-subtitle" id="auth-screen-copy">أدخل بياناتك للوصول إلى النظام.</div>
+                <div id="auth-screen-state" class="auth-state-banner" style="margin-top:16px"></div>
+                <div class="form-group" id="auth-screen-name-group">
+                  <label class="form-label required" for="auth-screen-full-name">الاسم الكامل</label>
+                  <input id="auth-screen-full-name" class="form-control" type="text" autocomplete="off">
+                </div>
+                <div class="form-group">
+                  <label class="form-label required" for="auth-screen-email">البريد الإلكتروني</label>
+                  <input id="auth-screen-email" class="form-control" type="email" required autocomplete="off" dir="ltr">
+                </div>
+                <div class="form-group">
+                  <label class="form-label required" for="auth-screen-password">كلمة المرور</label>
+                  <input id="auth-screen-password" class="form-control" type="password" required minlength="8">
+                </div>
+                <div class="btn-group">
+                  <button type="submit" class="btn btn-primary btn-block" id="auth-screen-submit">متابعة</button>
+                </div>
+              </form>
+            </div>
+          </div>
         `
       );
     }
@@ -467,6 +849,54 @@
                   <div class="btn-group">
                     <button type="button" class="btn btn-secondary" onclick="closeAuthModal()">إغلاق</button>
                     <button type="submit" class="btn btn-primary" id="auth-submit-btn">متابعة</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        `
+      );
+    }
+
+    if (!document.getElementById('user-admin-modal')) {
+      document.body.insertAdjacentHTML(
+        'beforeend',
+        `
+          <div id="user-admin-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="إدارة حساب">
+            <div class="modal-box auth-modal-box">
+              <div class="modal-header">
+                <div class="modal-title">إدارة الحساب</div>
+                <button class="modal-close" onclick="closeUserAdminModal()" aria-label="إغلاق">
+                  <i class="fas fa-times" aria-hidden="true"></i>
+                </button>
+              </div>
+              <div class="modal-body">
+                <form id="user-admin-form" onsubmit="handleUserAdminSubmit(event)">
+                  <div class="form-group">
+                    <label class="form-label required" for="ua-full-name">الاسم</label>
+                    <input id="ua-full-name" class="form-control" type="text" required>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label required" for="ua-role">الدور</label>
+                    <select id="ua-role" class="form-control">
+                      <option value="viewer">Viewer</option>
+                      <option value="engineer">Engineer</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="ua-password">كلمة مرور جديدة</label>
+                    <input id="ua-password" class="form-control" type="password" minlength="8" placeholder="اتركه فارغاً بدون تغيير">
+                  </div>
+                  <div class="toggle-grid">
+                    <label class="setting-toggle">
+                      <input id="ua-is-active" type="checkbox" checked>
+                      <span>الحساب نشط</span>
+                    </label>
+                  </div>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-secondary" onclick="closeUserAdminModal()">إلغاء</button>
+                    <button type="submit" class="btn btn-primary">حفظ التغييرات</button>
                   </div>
                 </form>
               </div>
@@ -575,6 +1005,56 @@
     submit.textContent = setupMode ? 'إنشاء الحساب' : 'تسجيل الدخول';
   }
 
+  function setAuthScreenVisible(visible) {
+    const authScreen = document.getElementById('auth-screen');
+    if (!authScreen) {
+      return;
+    }
+
+    authScreen.classList.toggle('hidden', !visible);
+    authScreen.setAttribute('aria-hidden', visible ? 'false' : 'true');
+    document.body.classList.toggle('auth-screen-open', visible);
+  }
+
+  function updateAuthModal() {
+    const setupMode = state.backend.authMode === 'setup';
+    const titleText = setupMode ? 'إعداد الحساب الإداري الأول' : 'تسجيل الدخول';
+    const noteText = setupMode
+      ? 'سيتم إنشاء أول حساب Admin على قاعدة البيانات وربط الجلسة الحالية به.'
+      : 'سجّل الدخول للوصول إلى البيانات المشتركة وإدارة المستخدمين والتقارير.';
+    const bannerText = setupMode
+      ? 'Vercel Backend جاهز لكن لا يوجد مستخدمون بعد.'
+      : 'يتم استخدام جلسة آمنة عبر API محلي على نفس الدومين.';
+
+    const modalTitle = document.getElementById('auth-modal-title');
+    const modalNote = document.getElementById('auth-note');
+    const modalNameGroup = document.getElementById('auth-name-group');
+    const modalSubmit = document.getElementById('auth-submit-btn');
+    const modalBanner = document.getElementById('auth-state-banner');
+
+    if (modalTitle) modalTitle.textContent = titleText;
+    if (modalNote) modalNote.textContent = noteText;
+    if (modalNameGroup) modalNameGroup.classList.toggle('hidden', !setupMode);
+    if (modalSubmit) modalSubmit.textContent = setupMode ? 'إنشاء الحساب' : 'تسجيل الدخول';
+    if (modalBanner) modalBanner.textContent = bannerText;
+
+    const screenTitle = document.getElementById('auth-screen-title');
+    const screenCopy = document.getElementById('auth-screen-copy');
+    const screenNameGroup = document.getElementById('auth-screen-name-group');
+    const screenSubmit = document.getElementById('auth-screen-submit');
+    const screenBanner = document.getElementById('auth-screen-state');
+
+    if (screenTitle) screenTitle.textContent = titleText;
+    if (screenCopy) {
+      screenCopy.textContent = setupMode
+        ? 'أنشئ أول مستخدم إداري لتفعيل النظام وربطه بقاعدة البيانات.'
+        : 'أدخل بياناتك للوصول إلى نظام NCR المشترك.';
+    }
+    if (screenNameGroup) screenNameGroup.classList.toggle('hidden', !setupMode);
+    if (screenSubmit) screenSubmit.textContent = setupMode ? 'إنشاء الحساب الإداري' : 'تسجيل الدخول';
+    if (screenBanner) screenBanner.textContent = bannerText;
+  }
+
   async function refreshBackendSession() {
     try {
       const session = await apiRequest('/api/auth/session');
@@ -600,6 +1080,7 @@
     renderHeaderSession();
     renderSyncBanner();
     updateAuthModal();
+    setAuthScreenVisible(isRemoteLocked());
     updateFileHint();
   }
 
@@ -620,7 +1101,8 @@
 
   async function saveNCRLocal(data) {
     const now = Date.now();
-    const ncr = {
+    const checklist = normalizeChecklist(data.checklist);
+    const ncr = normalizeNcrRecord({
       id: generateId(),
       caseNumber: data.caseNumber || generateEnterpriseCaseNumber(),
       subCase: data.subCase || '',
@@ -628,12 +1110,17 @@
       description: data.description,
       status: data.status,
       step: data.step || 1,
+      category: data.category || 'Process',
+      source: data.source || 'Internal',
       priority: data.priority || 'Medium',
       severity: data.severity || 'Major',
+      verificationStatus: deriveVerificationStatus(checklist, data.verificationStatus || 'Pending'),
       dueDate: data.dueDate || null,
+      containmentAction: data.containmentAction || '',
       rootCause: data.rootCause || '',
       correctiveAction: data.correctiveAction || '',
       tags: parseTags(data.tags),
+      checklist,
       ownerId: data.ownerId || null,
       ownerName: getUserNameById(data.ownerId) || null,
       colorCode: data.colorCode || '#3b82f6',
@@ -642,7 +1129,7 @@
       sourceMode: 'local',
       createdAt: now,
       updatedAt: now
-    };
+    });
 
     ncr.history = appendLocalHistory(ncr, `تم إنشاء التقرير ${ncr.caseNumber} محلياً.`, 'ncr.created');
     await ncrStore.setItem(ncr.id, ncr);
@@ -656,13 +1143,21 @@
       throw new Error('التقرير غير موجود');
     }
 
-    const updated = {
+    const nextChecklist = updates.checklist !== undefined
+      ? normalizeChecklist(updates.checklist)
+      : normalizeChecklist(existing.checklist);
+
+    const updated = normalizeNcrRecord({
       ...existing,
       ...updates,
       tags: updates.tags !== undefined ? parseTags(updates.tags) : existing.tags || [],
+      checklist: nextChecklist,
+      verificationStatus: updates.verificationStatus !== undefined
+        ? deriveVerificationStatus(nextChecklist, updates.verificationStatus)
+        : deriveVerificationStatus(nextChecklist, existing.verificationStatus),
       ownerName: updates.ownerId !== undefined ? getUserNameById(updates.ownerId) : existing.ownerName,
       updatedAt: Date.now()
-    };
+    });
 
     updated.history = appendLocalHistory(updated, `تم تحديث التقرير ${updated.caseNumber}.`, 'ncr.updated');
     await ncrStore.setItem(id, updated);
@@ -767,7 +1262,7 @@
       apiRequest('/api/users')
     ]);
 
-    state.ncrs = sortNcrs(ncrsResponse.items || []);
+    state.ncrs = sortNcrs((ncrsResponse.items || []).map(normalizeNcrRecord));
     state.departments = [...(departmentsResponse.items || [])].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
     state.invitations = invitationsResponse.items || [];
     state.users = usersResponse.items || [];
@@ -874,10 +1369,16 @@
     if (onboarding) onboarding.checked = !!settings.showOnboarding;
     if (compactPrint) compactPrint.checked = !!settings.compactPrint;
     if (autoPrint) autoPrint.checked = !!settings.autoPrintAfterSave;
+
+    const logoInput = document.getElementById('s-logo-file');
+    if (logoInput) {
+      logoInput.value = '';
+    }
   }
 
   function renderSettingsView() {
     fillSettingsForm();
+    renderLogoPreview();
     renderTemplateOptions();
     renderTemplateList();
     renderSettingsSummary();
@@ -887,12 +1388,17 @@
     return {
       id: generateId(),
       name: document.getElementById('t-name').value.trim(),
+      category: 'Process',
+      source: 'Internal',
       priority: document.getElementById('t-priority').value,
       severity: document.getElementById('t-severity').value,
+      verificationStatus: 'Pending',
       description: document.getElementById('t-description').value.trim(),
+      containmentAction: '',
       rootCause: document.getElementById('t-root-cause').value.trim(),
       correctiveAction: document.getElementById('t-corrective-action').value.trim(),
       tags: parseTags(document.getElementById('t-tags').value),
+      checklist: [],
       createdAt: Date.now()
     };
   }
@@ -903,13 +1409,19 @@
     }
 
     navigateTo('add-ncr');
+    document.getElementById('f-category').value = template.category || 'Process';
+    document.getElementById('f-source').value = template.source || 'Internal';
     document.getElementById('f-priority').value = template.priority || 'Medium';
     document.getElementById('f-severity').value = template.severity || 'Major';
+    document.getElementById('f-verification-status').value = template.verificationStatus || 'Pending';
     document.getElementById('f-description').value = template.description || '';
+    document.getElementById('f-containment-action').value = template.containmentAction || '';
     document.getElementById('f-root-cause').value = template.rootCause || '';
     document.getElementById('f-corrective-action').value = template.correctiveAction || '';
     document.getElementById('f-tags').value = (template.tags || []).join(', ');
     document.getElementById('f-template-select').value = template.id;
+    state.formChecklist = normalizeChecklist(template.checklist);
+    renderChecklistEditor();
   }
 
   async function ensureWritableAccess() {
@@ -918,7 +1430,7 @@
     }
 
     if (!state.currentUser) {
-      openAuthModal();
+      window.openAuthModal();
       const error = new Error('يجب تسجيل الدخول أولاً.');
       error.status = 401;
       throw error;
@@ -947,7 +1459,7 @@
 
     state.users = [];
     await legacy.loadAllData();
-    state.ncrs = sortNcrs(state.ncrs);
+    state.ncrs = sortNcrs(state.ncrs.map(normalizeNcrRecord));
   };
 
   window.saveNCR = async function saveNCREnterprise(data) {
@@ -1069,15 +1581,73 @@
     await deleteInvitationLocal(id);
   };
 
-  window.fileToBase64 = function fileToBase64Enterprise(file) {
-    return new Promise((resolve, reject) => {
-      if (!file) {
-        resolve(null);
-        return;
+  function readAsDataUrl(file) {
+    return (async () => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('فشل في قراءة الملف'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function loadImageElement(objectUrl) {
+    return (async () => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error('فشل في معالجة الصورة'));
+      image.src = objectUrl;
+    });
+  }
+
+  async function optimizeImageForRemote(file) {
+    if (!isRemoteMode() || !(file?.type || '').startsWith('image/')) {
+      return file;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    try {
+      const image = await loadImageElement(objectUrl);
+      const maxDimension = 1800;
+      const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+      if (scale >= 1 && file.size <= 1.5 * 1024 * 1024) {
+        return file;
       }
 
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+
+      const context = canvas.getContext('2d');
+      if (!context) {
+        return file;
+      }
+
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.82));
+      if (!blob || blob.size >= file.size) {
+        return file;
+      }
+
+      const basename = file.name.replace(/\.[^.]+$/, '') || 'attachment';
+      return new File([blob], `${basename}.jpg`, {
+        type: 'image/jpeg',
+        lastModified: Date.now()
+      });
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  }
+
+  window._fileToBase64LegacyBroken = function unusedLegacyFileToBase64(file) {
+    return (async () => {
+      if (!file) {
+        return null;
+      }
+
+      const effectiveFile = await optimizeImageForRemote(file);
       const maxSize = isRemoteMode() ? APP_CONFIG.MAX_REMOTE_FILE_SIZE : APP_CONFIG.MAX_LOCAL_FILE_SIZE;
-      if (file.size > maxSize) {
+      if (effectiveFile.size > maxSize) {
         reject(new Error(`حجم الملف يتجاوز ${Math.round(maxSize / (1024 * 1024))} ميجابايت`));
         return;
       }
@@ -1092,6 +1662,27 @@
       reader.onerror = () => reject(new Error('فشل في قراءة الملف'));
       reader.readAsDataURL(file);
     });
+  };
+
+  window.fileToBase64 = function fileToBase64Enterprise(file) {
+    return (async () => {
+      if (!file) {
+        return null;
+      }
+
+      const effectiveFile = await optimizeImageForRemote(file);
+      const maxSize = isRemoteMode() ? APP_CONFIG.MAX_REMOTE_FILE_SIZE : APP_CONFIG.MAX_LOCAL_FILE_SIZE;
+      if (effectiveFile.size > maxSize) {
+        throw new Error(`حجم الملف يتجاوز ${Math.round(maxSize / (1024 * 1024))} ميجابايت`);
+      }
+
+      return {
+        name: effectiveFile.name,
+        type: effectiveFile.type,
+        size: effectiveFile.size,
+        base64: await readAsDataUrl(effectiveFile)
+      };
+    })();
   };
 
   window.populateDeptSelects = function populateDeptSelectsEnterprise() {
@@ -1135,8 +1726,7 @@
 
     return state.ncrs
       .map(ncr => ({
-        ...ncr,
-        tags: parseTags(ncr.tags),
+        ...normalizeNcrRecord(ncr),
         elapsedDays: calculateElapsedDays(ncr.date)
       }))
       .filter(ncr => {
@@ -1254,12 +1844,14 @@
   }
 
   window.renderNCRCard = function renderNCRCardEnterprise(ncr) {
+    ncr = normalizeNcrRecord(ncr);
     const sla = getSLAStatus(ncr.elapsedDays);
     const deptName = ncr.departmentName || getDeptName(ncr.departmentId);
     const ownerName = ncr.ownerName || getUserNameById(ncr.ownerId);
     const hasAttachment = !!ncr.attachedDocument;
     const dueDate = ncr.dueDate ? formatDate(ncr.dueDate) : null;
     const canEdit = canManageRecords();
+    const checklistProgress = getChecklistProgress(ncr.checklist);
 
     return `
       <article class="ncr-card ${ncr.priority === 'Critical' ? 'sla-critical' : ''}" role="listitem" data-id="${ncr.id}">
@@ -1273,6 +1865,7 @@
             </div>
             <div class="metrics-inline">
               ${getStatusBadge(ncr.status)}
+              ${getVerificationBadge(ncr.verificationStatus || 'Pending')}
               ${getPriorityBadge(ncr.priority || 'Medium')}
               ${getSeverityBadge(ncr.severity || 'Major')}
               <span class="sla-badge ${sla.cls}">
@@ -1283,9 +1876,12 @@
           </div>
           <p class="ncr-description">${escapeHTML(ncr.description)}</p>
           <div class="ncr-meta">
+            <span class="ncr-meta-item"><i class="fas fa-layer-group" aria-hidden="true"></i>${escapeHTML(getCategoryLabel(ncr.category))}</span>
+            <span class="ncr-meta-item"><i class="fas fa-radar" aria-hidden="true"></i>${escapeHTML(getSourceLabel(ncr.source))}</span>
             ${deptName && deptName !== '—' ? `<span class="ncr-meta-item"><i class="fas fa-building" aria-hidden="true"></i>${escapeHTML(deptName)}</span>` : ''}
             ${ownerName && ownerName !== '—' ? `<span class="ncr-meta-item"><i class="fas fa-user" aria-hidden="true"></i>${escapeHTML(ownerName)}</span>` : ''}
             ${dueDate ? `<span class="ncr-meta-item"><i class="fas fa-calendar-day" aria-hidden="true"></i>${escapeHTML(dueDate)}</span>` : ''}
+            ${checklistProgress.total ? `<span class="ncr-meta-item"><i class="fas fa-list-check" aria-hidden="true"></i>${checklistProgress.completed}/${checklistProgress.total}</span>` : ''}
             ${hasAttachment ? `<span class="ncr-meta-item" style="color:var(--vf-cyan)"><i class="fas fa-paperclip" aria-hidden="true"></i>مرفق</span>` : ''}
           </div>
         </div>
@@ -1433,8 +2029,14 @@
       document.getElementById('submit-btn-text').textContent = 'حفظ التقرير';
       document.getElementById('f-priority').value = 'Medium';
       document.getElementById('f-severity').value = 'Major';
+      document.getElementById('f-category').value = 'Process';
+      document.getElementById('f-source').value = 'Internal';
+      document.getElementById('f-verification-status').value = 'Pending';
+      document.getElementById('f-containment-action').value = '';
       document.getElementById('f-template-select').value = '';
       document.getElementById('file-preview-container').innerHTML = '';
+      state.formChecklist = [];
+      renderChecklistEditor();
       state.fileData = null;
     }
 
@@ -1442,7 +2044,7 @@
   };
 
   window.editNCR = function editNCREnterprise(id) {
-    const ncr = state.ncrs.find(item => item.id === id);
+    const ncr = normalizeNcrRecord(state.ncrs.find(item => item.id === id));
     if (!ncr) {
       showToast('التقرير غير موجود', 'error');
       return;
@@ -1457,16 +2059,22 @@
     document.getElementById('f-description').value = ncr.description || '';
     document.getElementById('f-status').value = ncr.status || 'Open';
     document.getElementById('f-step').value = ncr.step || 1;
+    document.getElementById('f-category').value = ncr.category || 'Process';
+    document.getElementById('f-source').value = ncr.source || 'Internal';
     document.getElementById('f-priority').value = ncr.priority || 'Medium';
     document.getElementById('f-severity').value = ncr.severity || 'Major';
+    document.getElementById('f-verification-status').value = ncr.verificationStatus || 'Pending';
     document.getElementById('f-owner-id').value = ncr.ownerId || '';
     document.getElementById('f-due-date').value = ncr.dueDate ? new Date(ncr.dueDate).toISOString().slice(0, 10) : '';
     document.getElementById('f-tags').value = parseTags(ncr.tags).join(', ');
+    document.getElementById('f-containment-action').value = ncr.containmentAction || '';
     document.getElementById('f-root-cause').value = ncr.rootCause || '';
     document.getElementById('f-corrective-action').value = ncr.correctiveAction || '';
     document.getElementById('f-color').value = ncr.colorCode || '#3b82f6';
     document.getElementById('f-department').value = ncr.departmentId || '';
     document.getElementById('f-editing-id').value = id;
+    state.formChecklist = normalizeChecklist(ncr.checklist);
+    renderChecklistEditor();
     document.getElementById('form-view-label').textContent = 'تعديل التقرير';
     document.getElementById('form-view-heading').textContent = ncr.caseNumber || 'تعديل';
     document.getElementById('submit-btn-text').textContent = 'تحديث التقرير';
@@ -1506,13 +2114,21 @@
         description: document.getElementById('f-description').value.trim(),
         status: document.getElementById('f-status').value,
         step: parseInt(document.getElementById('f-step').value || '1', 10) || 1,
+        category: document.getElementById('f-category').value || 'Process',
+        source: document.getElementById('f-source').value || 'Internal',
         priority: document.getElementById('f-priority').value,
         severity: document.getElementById('f-severity').value,
+        verificationStatus: deriveVerificationStatus(
+          state.formChecklist,
+          document.getElementById('f-verification-status').value || 'Pending'
+        ),
         ownerId: document.getElementById('f-owner-id').value || null,
         dueDate: document.getElementById('f-due-date').value || null,
         tags: parseTags(document.getElementById('f-tags').value),
+        containmentAction: document.getElementById('f-containment-action').value.trim(),
         rootCause: document.getElementById('f-root-cause').value.trim(),
         correctiveAction: document.getElementById('f-corrective-action').value.trim(),
+        checklist: normalizeChecklist(state.formChecklist),
         colorCode: document.getElementById('f-color').value,
         departmentId: document.getElementById('f-department').value || null,
         attachedDocument: state.fileData || null
@@ -1531,10 +2147,12 @@
       document.getElementById('f-editing-id').value = '';
       form.reset();
       document.getElementById('file-preview-container').innerHTML = '';
+      state.formChecklist = [];
+      renderChecklistEditor();
       state.fileData = null;
       navigateTo('dashboard');
       if (state.settings.autoPrintAfterSave) {
-        setTimeout(() => printCurrentReport(), 250);
+          setTimeout(() => window.printCurrentReport(), 250);
       }
     } catch (error) {
       showToast(error.message || 'فشل حفظ التقرير', 'error');
@@ -1546,7 +2164,7 @@
   };
 
   window.openNCRDetail = function openNCRDetailEnterprise(id) {
-    const ncr = state.ncrs.find(item => item.id === id);
+    const ncr = normalizeNcrRecord(state.ncrs.find(item => item.id === id));
     if (!ncr) {
       return;
     }
@@ -1556,10 +2174,15 @@
     const ownerName = ncr.ownerName || getUserNameById(ncr.ownerId);
     const sla = getSLAStatus(calculateElapsedDays(ncr.date));
     const history = Array.isArray(ncr.history) ? ncr.history : [];
+    const checklistMarkup = buildChecklistMarkup(ncr.checklist, {
+      canToggle: canManageRecords(),
+      caseId: ncr.id
+    });
+    const attachmentSrc = getAttachmentSource(ncr.attachedDocument);
     const attachmentMarkup = ncr.attachedDocument
       ? (ncr.attachedDocument.type || '').startsWith('image/')
-        ? `<img src="${ncr.attachedDocument.base64}" alt="مرفق" class="attachment-preview" loading="lazy">`
-        : `<a href="${ncr.attachedDocument.base64}" download="${escapeHTML(ncr.attachedDocument.name)}" class="btn btn-secondary btn-sm"><i class="fas fa-download" aria-hidden="true"></i>${escapeHTML(ncr.attachedDocument.name)}</a>`
+        ? `<img src="${attachmentSrc}" alt="مرفق" class="attachment-preview" loading="lazy">`
+        : `<a href="${attachmentSrc}" download="${escapeHTML(ncr.attachedDocument.name)}" class="btn btn-secondary btn-sm"><i class="fas fa-download" aria-hidden="true"></i>${escapeHTML(ncr.attachedDocument.name)}</a>`
       : '—';
 
     document.getElementById('detail-modal-title').textContent = 'تفاصيل التقرير';
@@ -1571,6 +2194,7 @@
           <div class="detail-field-label">الحالة</div>
           <div class="detail-field-value metrics-inline">
             ${getStatusBadge(ncr.status)}
+            ${getVerificationBadge(ncr.verificationStatus || 'Pending')}
             ${getPriorityBadge(ncr.priority || 'Medium')}
             ${getSeverityBadge(ncr.severity || 'Major')}
           </div>
@@ -1588,6 +2212,20 @@
         <div>
           <div class="detail-field-label">الوصف</div>
           <div class="detail-field-value">${escapeHTML(ncr.description)}</div>
+        </div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-field-icon"><i class="fas fa-layer-group" aria-hidden="true"></i></div>
+        <div>
+          <div class="detail-field-label">التصنيف</div>
+          <div class="detail-field-value">${escapeHTML(getCategoryLabel(ncr.category))}</div>
+        </div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-field-icon"><i class="fas fa-radar" aria-hidden="true"></i></div>
+        <div>
+          <div class="detail-field-label">المصدر</div>
+          <div class="detail-field-value">${escapeHTML(getSourceLabel(ncr.source))}</div>
         </div>
       </div>
       <div class="detail-field">
@@ -1612,6 +2250,13 @@
         </div>
       </div>
       <div class="detail-field">
+        <div class="detail-field-icon"><i class="fas fa-shield" aria-hidden="true"></i></div>
+        <div>
+          <div class="detail-field-label">الإجراء الاحتوائي</div>
+          <div class="detail-field-value">${escapeHTML(ncr.containmentAction || '—')}</div>
+        </div>
+      </div>
+      <div class="detail-field">
         <div class="detail-field-icon"><i class="fas fa-diagram-project" aria-hidden="true"></i></div>
         <div>
           <div class="detail-field-label">السبب الجذري</div>
@@ -1630,6 +2275,13 @@
         <div>
           <div class="detail-field-label">الوسوم</div>
           <div class="detail-field-value">${parseTags(ncr.tags).length ? parseTags(ncr.tags).map(tag => `<span class="badge badge-gray">${escapeHTML(tag)}</span>`).join(' ') : '—'}</div>
+        </div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-field-icon"><i class="fas fa-list-check" aria-hidden="true"></i></div>
+        <div style="width:100%">
+          <div class="detail-field-label">قائمة التحقق</div>
+          <div class="detail-field-value detail-checklist">${checklistMarkup}</div>
         </div>
       </div>
       <div class="detail-field">
@@ -1664,7 +2316,7 @@
     if (view === 'add-ncr' && !canManageRecords()) {
       showToast('صلاحياتك الحالية لا تسمح بإضافة تقرير.', 'warning');
       if (state.backend.available) {
-        openAuthModal();
+        window.openAuthModal();
       }
       view = 'dashboard';
     }
@@ -1692,7 +2344,7 @@
     } else if (view === 'departments') {
       renderDepartments();
     } else if (view === 'users') {
-      renderUsersView();
+      window.renderUsersView();
     } else if (view === 'settings') {
       renderSettingsView();
     } else if (view === 'add-ncr') {
@@ -1763,7 +2415,7 @@
     renderHeaderSession();
     renderSyncBanner();
     renderDashboard();
-    openAuthModal('login');
+    window.openAuthModal('login');
   };
 
   window.handleUserFormSubmit = async function handleUserFormSubmit(event) {
@@ -1786,7 +2438,7 @@
       });
       form.reset();
       await loadRemoteData();
-      renderUsersView();
+      window.renderUsersView();
       populateDeptSelects();
       showToast('تمت إضافة المستخدم', 'success');
     } catch (error) {
@@ -1801,7 +2453,7 @@
         body: { isActive }
       });
       await loadRemoteData();
-      renderUsersView();
+      window.renderUsersView();
       populateDeptSelects();
       showToast('تم تحديث حالة المستخدم', 'success');
     } catch (error) {
@@ -1820,6 +2472,7 @@
       siteName: document.getElementById('s-site-name').value.trim() || DEFAULT_SETTINGS.siteName,
       casePrefix: document.getElementById('s-case-prefix').value.trim().toUpperCase() || DEFAULT_SETTINGS.casePrefix,
       accentColor: document.getElementById('s-accent-color').value || DEFAULT_SETTINGS.accentColor,
+      logoData: state.settings.logoData || null,
       slaWarningDays: warningDays,
       slaCriticalDays: criticalDays,
       printSubtitle: document.getElementById('s-print-subtitle').value.trim() || DEFAULT_SETTINGS.printSubtitle,
@@ -1917,12 +2570,17 @@
     state.templates.unshift({
       id: generateId(),
       name: templateName.trim(),
+      category: document.getElementById('f-category').value || 'Process',
+      source: document.getElementById('f-source').value || 'Internal',
       priority: document.getElementById('f-priority').value,
       severity: document.getElementById('f-severity').value,
+      verificationStatus: document.getElementById('f-verification-status').value || 'Pending',
       description,
+      containmentAction: document.getElementById('f-containment-action')?.value.trim() || '',
       rootCause,
       correctiveAction,
       tags,
+      checklist: normalizeChecklist(state.formChecklist),
       createdAt: Date.now()
     });
     persistCustomization();
@@ -1932,14 +2590,366 @@
     showToast('تم حفظ القالب من النموذج الحالي', 'success');
   };
 
+  window.addChecklistItemFromForm = function addChecklistItemFromForm() {
+    const input = document.getElementById('f-checklist-item');
+    const label = input?.value.trim();
+    if (!label) {
+      showToast('أدخل عنصر تحقق أولاً', 'warning');
+      input?.focus();
+      return;
+    }
+
+    state.formChecklist = [
+      ...normalizeChecklist(state.formChecklist),
+      { id: generateId(), label, done: false, note: '' }
+    ];
+    if (input) {
+      input.value = '';
+      input.focus();
+    }
+    renderChecklistEditor();
+  };
+
+  window.toggleChecklistDraftItem = function toggleChecklistDraftItem(id) {
+    state.formChecklist = normalizeChecklist(state.formChecklist).map(item => (
+      item.id === id
+        ? { ...item, done: !item.done }
+        : item
+    ));
+    renderChecklistEditor();
+  };
+
+  window.removeChecklistItem = function removeChecklistItem(id) {
+    state.formChecklist = normalizeChecklist(state.formChecklist).filter(item => item.id !== id);
+    renderChecklistEditor();
+  };
+
+  window.toggleChecklistItemOnCase = async function toggleChecklistItemOnCase(caseId, itemId) {
+    if (!canManageRecords()) {
+      showToast('صلاحياتك الحالية لا تسمح بتحديث عناصر التحقق.', 'warning');
+      return;
+    }
+
+    const ncr = normalizeNcrRecord(state.ncrs.find(item => item.id === caseId));
+    if (!ncr) {
+      showToast('التقرير غير موجود', 'error');
+      return;
+    }
+
+    const nextChecklist = normalizeChecklist(ncr.checklist).map(item => (
+      item.id === itemId
+        ? { ...item, done: !item.done }
+        : item
+    ));
+
+    try {
+      await updateNCR(caseId, {
+        checklist: nextChecklist,
+        verificationStatus: deriveVerificationStatus(nextChecklist, ncr.verificationStatus)
+      });
+      if (state.detailNCRId === caseId) {
+        openNCRDetail(caseId);
+      }
+      renderDashboard();
+    } catch (error) {
+      showToast(error.message || 'فشل تحديث عنصر التحقق', 'error');
+    }
+  };
+
+  window.handleLogoSelect = async function handleLogoSelect(event) {
+    const file = event.target?.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    if (!(file.type || '').startsWith('image/')) {
+      showToast('ارفع ملف صورة صالح للشعار.', 'warning');
+      event.target.value = '';
+      return;
+    }
+
+    try {
+      const encoded = await fileToBase64(file);
+      state.settings.logoData = encoded?.base64 || null;
+      applyBranding();
+      renderLogoPreview();
+      showToast('تم تجهيز الشعار. احفظ الإعدادات لتثبيته.', 'success');
+    } catch (error) {
+      showToast(error.message || 'فشل رفع الشعار', 'error');
+      event.target.value = '';
+    }
+  };
+
+  window.removeCompanyLogo = function removeCompanyLogo() {
+    state.settings.logoData = null;
+    applyBranding();
+    renderLogoPreview();
+  };
+
+  window.renderUsersView = function renderUsersViewEnterpriseEnhanced() {
+    const list = document.getElementById('user-list');
+    const form = document.getElementById('user-form');
+    const metrics = document.getElementById('user-dashboard-metrics');
+    if (!list || !form) {
+      return;
+    }
+
+    const resetMetrics = () => {
+      if (metrics) {
+        metrics.innerHTML = '';
+      }
+    };
+
+    if (!state.backend.available) {
+      form.classList.add('hidden');
+      resetMetrics();
+      list.innerHTML = '<div class="empty-state"><i class="fas fa-database"></i><h3>لا يوجد خادم</h3><p>إدارة المستخدمين متاحة فقط عند تشغيل API على Vercel وربط قاعدة بيانات.</p></div>';
+      return;
+    }
+
+    if (isRemoteLocked()) {
+      form.classList.add('hidden');
+      resetMetrics();
+      list.innerHTML = '<div class="empty-state"><i class="fas fa-user-lock"></i><h3>تسجيل الدخول مطلوب</h3><p>سجّل الدخول أولاً لعرض المستخدمين.</p></div>';
+      return;
+    }
+
+    if (!isAdmin()) {
+      form.classList.add('hidden');
+      resetMetrics();
+      list.innerHTML = '<div class="empty-state"><i class="fas fa-shield-halved"></i><h3>صلاحية غير كافية</h3><p>إدارة المستخدمين متاحة فقط للحساب الإداري.</p></div>';
+      return;
+    }
+
+    form.classList.remove('hidden');
+
+    if (metrics) {
+      const activeCount = state.users.filter(user => user.isActive).length;
+      const adminCount = state.users.filter(user => user.role === 'admin').length;
+      const engineerCount = state.users.filter(user => user.role === 'engineer').length;
+      const disabledCount = state.users.filter(user => !user.isActive).length;
+
+      metrics.innerHTML = `
+        <div class="ops-card">
+          <div class="ops-card-label">إجمالي الحسابات</div>
+          <div class="ops-card-value">${state.users.length}</div>
+          <div class="ops-card-hint">كل المستخدمين المسجلين</div>
+        </div>
+        <div class="ops-card">
+          <div class="ops-card-label">الحسابات النشطة</div>
+          <div class="ops-card-value">${activeCount}</div>
+          <div class="ops-card-hint">القادرة على تسجيل الدخول</div>
+        </div>
+        <div class="ops-card">
+          <div class="ops-card-label">Admins / Engineers</div>
+          <div class="ops-card-value">${adminCount}/${engineerCount}</div>
+          <div class="ops-card-hint">توزيع الأدوار التشغيلية</div>
+        </div>
+        <div class="ops-card">
+          <div class="ops-card-label">حسابات معطلة</div>
+          <div class="ops-card-value">${disabledCount}</div>
+          <div class="ops-card-hint">تحتاج مراجعة أو إعادة تفعيل</div>
+        </div>
+      `;
+    }
+
+    list.innerHTML = state.users.length
+      ? state.users.map(user => `
+          <div class="user-card">
+            <div class="user-card-main">
+              <div class="user-avatar">${getInitials(user.fullName)}</div>
+              <div class="user-card-stack">
+                <div class="user-card-name">${escapeHTML(user.fullName)}</div>
+                <div class="user-card-meta">${escapeHTML(user.email)} • ${escapeHTML(APP_CONFIG.ROLE_LABELS[user.role] || user.role)}</div>
+                <div class="user-card-meta">آخر دخول: ${user.lastLoginAt ? escapeHTML(formatDateTime(user.lastLoginAt)) : 'لم يسجل الدخول بعد'}</div>
+              </div>
+            </div>
+            <div class="user-card-actions">
+              <span class="badge ${user.isActive ? 'badge-green' : 'badge-gray'}">${user.isActive ? 'Active' : 'Disabled'}</span>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="openUserAdminModal('${user.id}')">إدارة</button>
+              ${state.currentUser?.id !== user.id ? `<button type="button" class="btn btn-outline btn-sm" onclick="toggleUserActive('${user.id}', ${user.isActive ? 'false' : 'true'})">${user.isActive ? 'تعطيل' : 'تفعيل'}</button>` : '<span class="badge badge-blue">حسابك الحالي</span>'}
+            </div>
+          </div>
+        `).join('')
+      : '<div class="empty-state"><i class="fas fa-users"></i><h3>لا يوجد مستخدمون</h3><p>أضف أول عضو فريق من النموذج أعلاه.</p></div>';
+  };
+
+  window.openUserAdminModal = function openUserAdminModal(id) {
+    if (!isAdmin()) {
+      showToast('إدارة الحسابات متاحة فقط للمسؤول.', 'warning');
+      return;
+    }
+
+    const user = state.users.find(item => item.id === id);
+    if (!user) {
+      showToast('المستخدم غير موجود', 'error');
+      return;
+    }
+
+    state.managingUserId = id;
+    document.getElementById('ua-full-name').value = user.fullName || '';
+    document.getElementById('ua-role').value = user.role || 'viewer';
+    document.getElementById('ua-password').value = '';
+    document.getElementById('ua-is-active').checked = !!user.isActive;
+    legacy.openModal('user-admin-modal');
+  };
+
+  window.closeUserAdminModal = function closeUserAdminModal() {
+    state.managingUserId = null;
+    document.getElementById('user-admin-form')?.reset();
+    legacy.closeModal('user-admin-modal');
+  };
+
+  window.handleUserAdminSubmit = async function handleUserAdminSubmit(event) {
+    event.preventDefault();
+    if (!isAdmin() || !state.managingUserId) {
+      showToast('لا يمكنك تعديل هذا الحساب حالياً.', 'warning');
+      return;
+    }
+
+    const password = document.getElementById('ua-password').value.trim();
+    const payload = {
+      fullName: document.getElementById('ua-full-name').value.trim(),
+      role: document.getElementById('ua-role').value,
+      isActive: document.getElementById('ua-is-active').checked
+    };
+    if (password) {
+      payload.password = password;
+    }
+
+    try {
+      await apiRequest(`/api/users/${state.managingUserId}`, {
+        method: 'PATCH',
+        body: payload
+      });
+      await loadRemoteData();
+      window.closeUserAdminModal();
+      window.renderUsersView();
+      populateDeptSelects();
+      showToast('تم تحديث بيانات المستخدم', 'success');
+    } catch (error) {
+      showToast(error.message || 'فشل تحديث المستخدم', 'error');
+    }
+  };
+
+  function resetAuthForms() {
+    document.getElementById('auth-form')?.reset();
+    document.getElementById('auth-screen-form')?.reset();
+  }
+
+  async function submitAuthFlow(prefix, submitId) {
+    const setupMode = state.backend.authMode === 'setup';
+    const submitButton = document.getElementById(submitId);
+    const originalLabel = submitButton ? submitButton.innerHTML : '';
+
+    try {
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<span class="spinner"></span> جارٍ التحقق...';
+      }
+
+      const response = await apiRequest(setupMode ? '/api/auth/register' : '/api/auth/login', {
+        method: 'POST',
+        body: collectAuthPayload(prefix)
+      });
+
+      state.currentUser = response.user;
+      state.backend.hasUsers = true;
+      state.backend.mode = 'remote';
+      await loadAllData();
+      resetAuthForms();
+      legacy.closeModal('auth-modal');
+      setAuthScreenVisible(false);
+      renderHeaderSession();
+      renderSyncBanner();
+      updateAuthModal();
+      populateDeptSelects();
+      if (state.view === 'users') {
+        window.renderUsersView();
+      }
+      navigateTo('dashboard');
+      showToast(setupMode ? 'تم إنشاء الحساب الإداري' : 'تم تسجيل الدخول بنجاح', 'success');
+    } catch (error) {
+      showToast(error.message || 'فشل تسجيل الدخول', 'error');
+    } finally {
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalLabel;
+      }
+    }
+  }
+
+  window.openAuthModal = function openAuthModal(mode) {
+    if (!state.backend.available) {
+      return;
+    }
+
+    state.backend.authMode = mode || state.backend.authMode || (state.backend.hasUsers ? 'login' : 'setup');
+    updateAuthModal();
+    if (isRemoteLocked()) {
+      legacy.closeModal('auth-modal');
+      setAuthScreenVisible(true);
+      return;
+    }
+
+    setAuthScreenVisible(false);
+    legacy.openModal('auth-modal');
+  };
+
+  window.closeAuthModal = function closeAuthModal() {
+    if (isRemoteLocked()) {
+      return;
+    }
+    setAuthScreenVisible(false);
+    legacy.closeModal('auth-modal');
+  };
+
+  window.handleAuthSubmit = async function handleAuthSubmit(event) {
+    event.preventDefault();
+    await submitAuthFlow('auth-', 'auth-submit-btn');
+  };
+
+  window.handleAuthScreenSubmit = async function handleAuthScreenSubmit(event) {
+    event.preventDefault();
+    await submitAuthFlow('auth-screen-', 'auth-screen-submit');
+  };
+
+  window.logoutCurrentUser = async function logoutCurrentUser() {
+    try {
+      await apiRequest('/api/auth/logout', { method: 'POST' });
+    } catch (_) {
+      // Ignore logout transport failures and still reset local state.
+    }
+
+    state.currentUser = null;
+    state.users = [];
+    state.ncrs = [];
+    state.departments = [];
+    state.invitations = [];
+    state.backend.mode = 'locked';
+    state.backend.authMode = 'login';
+    resetAuthForms();
+    renderHeaderSession();
+    renderSyncBanner();
+    renderDashboard();
+    window.openAuthModal('login');
+  };
+
   function buildPrintMarkup(title, rowsMarkup, metaMarkup = '') {
+    const logoMarkup = state.settings.logoData
+      ? `<div class="print-logo has-image"><img src="${state.settings.logoData}" alt="${escapeHTML(state.settings.orgName)} Logo" class="brand-logo-image"></div>`
+      : `<div class="print-logo">${escapeHTML((state.settings.orgName || 'V').slice(0, 1).toUpperCase())}</div>`;
+
     return `
       <div class="print-sheet ${state.settings.compactPrint ? 'compact' : ''}">
         <div class="print-header">
-          <div>
+          <div class="print-brand">
+            ${logoMarkup}
+            <div>
             <div class="print-org">${escapeHTML(state.settings.orgName)}</div>
             <div class="print-title">${escapeHTML(title)}</div>
             <div class="print-subtitle">${escapeHTML(state.settings.printSubtitle)}</div>
+            </div>
           </div>
           <div class="print-meta">
             <div>${escapeHTML(state.settings.siteName)}</div>
@@ -2087,7 +3097,7 @@
         renderDepartments();
       }
       if (state.view === 'users') {
-        renderUsersView();
+        window.renderUsersView();
       }
       showToast('تمت مزامنة البيانات', 'success');
     } catch (error) {
@@ -2120,6 +3130,129 @@
     return { rows, ncrs, monthLabel };
   };
 
+  window.printCurrentReport = function printCurrentReportEnterprise() {
+    closeExportSheet?.();
+    const rows = getFilteredNCRs().map(normalizeNcrRecord);
+    if (!rows.length) {
+      showToast('لا توجد بيانات للطباعة', 'warning');
+      return;
+    }
+
+    const stats = getStats();
+    const metaMarkup = `
+      <div class="print-chip">الإجمالي: ${rows.length}</div>
+      <div class="print-chip">مفتوح: ${stats.open}</div>
+      <div class="print-chip">قيد العمل: ${stats.inProgress}</div>
+      <div class="print-chip">مغلق: ${stats.closed}</div>
+      <div class="print-chip">SLA متجاوز: ${stats.slaBreached}</div>
+    `;
+
+    const rowsMarkup = `
+      <table class="print-table">
+        <thead>
+          <tr>
+            <th>رقم الحالة</th>
+            <th>التصنيف</th>
+            <th>الوصف</th>
+            <th>الحالة</th>
+            <th>التحقق</th>
+            <th>المسؤول</th>
+            <th>Checklist</th>
+            <th>الاستحقاق</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(item => {
+            const progress = getChecklistProgress(item.checklist);
+            return `
+              <tr>
+                <td>${escapeHTML(item.caseNumber)}</td>
+                <td>${escapeHTML(getCategoryLabel(item.category))}</td>
+                <td>${escapeHTML(item.description || '')}</td>
+                <td>${escapeHTML(APP_CONFIG.STATUS_LABELS[item.status] || item.status)}</td>
+                <td>${escapeHTML(getVerificationLabel(item.verificationStatus))}</td>
+                <td>${escapeHTML(item.ownerName || getUserNameById(item.ownerId))}</td>
+                <td>${progress.total ? `${progress.completed}/${progress.total}` : '—'}</td>
+                <td>${item.dueDate ? escapeHTML(formatDate(item.dueDate)) : '—'}</td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    `;
+
+    openPrintSurface(buildPrintMarkup('طباعة سجل NCR', rowsMarkup, metaMarkup));
+  };
+
+  window.printDetailReport = function printDetailReportEnterprise() {
+    const id = state.detailNCRId;
+    const ncr = id ? normalizeNcrRecord(state.ncrs.find(item => item.id === id)) : null;
+    if (!ncr) {
+      showToast('افتح تقريراً أولاً ثم اطبعه', 'warning');
+      return;
+    }
+
+    const checklistMarkup = normalizeChecklist(ncr.checklist).length
+      ? `<div class="print-checklist">${normalizeChecklist(ncr.checklist).map(item => `<div class="print-checklist-item ${item.done ? 'done' : ''}">${item.done ? '[x]' : '[ ]'} ${escapeHTML(item.label)}</div>`).join('')}</div>`
+      : '—';
+
+    const rowsMarkup = `
+      <div class="print-detail-grid">
+        <div class="print-detail-card"><span>رقم الحالة</span><strong>${escapeHTML(ncr.caseNumber)}</strong></div>
+        <div class="print-detail-card"><span>الحالة</span><strong>${escapeHTML(APP_CONFIG.STATUS_LABELS[ncr.status] || ncr.status)}</strong></div>
+        <div class="print-detail-card"><span>التحقق</span><strong>${escapeHTML(getVerificationLabel(ncr.verificationStatus))}</strong></div>
+        <div class="print-detail-card"><span>التصنيف / المصدر</span><strong>${escapeHTML(getCategoryLabel(ncr.category))} / ${escapeHTML(getSourceLabel(ncr.source))}</strong></div>
+        <div class="print-detail-card"><span>الأولوية</span><strong>${escapeHTML(APP_CONFIG.PRIORITY_LABELS[ncr.priority] || ncr.priority || '—')}</strong></div>
+        <div class="print-detail-card"><span>التأثير</span><strong>${escapeHTML(APP_CONFIG.SEVERITY_LABELS[ncr.severity] || ncr.severity || '—')}</strong></div>
+        <div class="print-detail-card"><span>المسؤول</span><strong>${escapeHTML(ncr.ownerName || getUserNameById(ncr.ownerId))}</strong></div>
+        <div class="print-detail-card"><span>القسم</span><strong>${escapeHTML(ncr.departmentName || getDeptName(ncr.departmentId))}</strong></div>
+        <div class="print-detail-card"><span>تاريخ الاستحقاق</span><strong>${ncr.dueDate ? escapeHTML(formatDate(ncr.dueDate)) : '—'}</strong></div>
+        <div class="print-detail-card"><span>الإجراء الاحتوائي</span><strong>${escapeHTML(ncr.containmentAction || '—')}</strong></div>
+        <div class="print-detail-card wide"><span>الوصف</span><strong>${escapeHTML(ncr.description || '—')}</strong></div>
+        <div class="print-detail-card wide"><span>السبب الجذري</span><strong>${escapeHTML(ncr.rootCause || '—')}</strong></div>
+        <div class="print-detail-card wide"><span>الإجراء التصحيحي</span><strong>${escapeHTML(ncr.correctiveAction || '—')}</strong></div>
+        <div class="print-detail-card wide"><span>Checklist</span><div>${checklistMarkup}</div></div>
+      </div>
+    `;
+
+    openPrintSurface(buildPrintMarkup(`تقرير ${ncr.caseNumber}`, rowsMarkup));
+  };
+
+  window.getExportData = function getExportDataEnterpriseEnhanced() {
+    const ncrs = getFilteredNCRs().map(normalizeNcrRecord);
+    const monthLabel = state.filter.month !== null
+      ? `${APP_CONFIG.MONTHS_AR[state.filter.month]} ${state.filter.year}`
+      : 'الكل';
+
+    const rows = ncrs.map(ncr => {
+      const progress = getChecklistProgress(ncr.checklist);
+      return {
+        'رقم الحالة': ncr.caseNumber || '',
+        'الحالة': APP_CONFIG.STATUS_LABELS[ncr.status] || ncr.status,
+        'التحقق': getVerificationLabel(ncr.verificationStatus),
+        'التصنيف': getCategoryLabel(ncr.category),
+        'المصدر': getSourceLabel(ncr.source),
+        'الأولوية': APP_CONFIG.PRIORITY_LABELS[ncr.priority] || ncr.priority || '',
+        'التأثير': APP_CONFIG.SEVERITY_LABELS[ncr.severity] || ncr.severity || '',
+        'الوصف': ncr.description || '',
+        'الإجراء الاحتوائي': ncr.containmentAction || '',
+        'السبب الجذري': ncr.rootCause || '',
+        'الإجراء التصحيحي': ncr.correctiveAction || '',
+        'المسؤول': ncr.ownerName || getUserNameById(ncr.ownerId),
+        'القسم': ncr.departmentName || getDeptName(ncr.departmentId),
+        'الاستحقاق': ncr.dueDate ? formatDate(ncr.dueDate) : '',
+        'Checklist': progress.total ? `${progress.completed}/${progress.total}` : '',
+        'SLA': calculateElapsedDays(ncr.date),
+        'الوسوم': parseTags(ncr.tags).join(', '),
+        'التاريخ': formatDate(ncr.date)
+      };
+    });
+
+    return { rows, ncrs, monthLabel };
+  };
+
+  getExportData = window.getExportData;
+
   window.VortexFlowBootstrap = async function enterpriseBootstrap() {
     console.log(`[VF] Initializing ${APP_CONFIG.appName} v${APP_CONFIG.version}`);
 
@@ -2133,6 +3266,7 @@
     renderMonthFilter();
     populateDeptSelects();
     renderSettingsView();
+    renderChecklistEditor();
     navigateTo('dashboard');
     legacy.initKeyboardShortcuts();
     legacy.initSwipeGestures();
@@ -2145,7 +3279,8 @@
     }
 
     if (state.backend.available && !state.currentUser) {
-      openAuthModal(state.backend.authMode);
+      setAuthScreenVisible(true);
+      window.openAuthModal(state.backend.authMode);
     }
   };
 })();

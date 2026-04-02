@@ -3,14 +3,18 @@
    Cache-first strategy with background refresh
    ============================================================ */
 
-const CACHE_VERSION = 'vortexflow-ncr-v2.0.0';
+const CACHE_VERSION = 'vortexflow-ncr-v2.3.0';
 const PRECACHE_URLS = [
   './index.html',
   './style.css',
   './enterprise.css',
+  './enterprise-plus.css',
   './app.js',
   './enterprise.js',
-  './manifest.json'
+  './enterprise-plus.js',
+  './manifest.json',
+  './assets/icons/vortexflow-ncr-icon.svg',
+  './assets/icons/vortexflow-ncr-maskable.svg'
 ];
 
 /* ---- INSTALL: Precache app shell ---- */

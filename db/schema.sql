@@ -4,11 +4,16 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'engineer',
+  job_title TEXT,
+  is_verified BOOLEAN NOT NULL DEFAULT FALSE,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   last_login_at TIMESTAMPTZ
 );
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS job_title TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
@@ -33,12 +38,17 @@ CREATE TABLE IF NOT EXISTS ncr_cases (
   description TEXT NOT NULL,
   status TEXT NOT NULL,
   step INTEGER NOT NULL DEFAULT 1,
+  category TEXT NOT NULL DEFAULT 'Process',
+  source TEXT NOT NULL DEFAULT 'Internal',
   priority TEXT NOT NULL DEFAULT 'Medium',
   severity TEXT NOT NULL DEFAULT 'Major',
+  verification_status TEXT NOT NULL DEFAULT 'Pending',
   due_date TIMESTAMPTZ,
+  containment_action TEXT,
   root_cause TEXT,
   corrective_action TEXT,
   tags JSONB NOT NULL DEFAULT '[]'::jsonb,
+  checklist JSONB NOT NULL DEFAULT '[]'::jsonb,
   owner_id TEXT REFERENCES users(id) ON DELETE SET NULL,
   department_id TEXT REFERENCES departments(id) ON DELETE SET NULL,
   color_code TEXT NOT NULL DEFAULT '#3b82f6',
@@ -50,6 +60,12 @@ CREATE TABLE IF NOT EXISTS ncr_cases (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE ncr_cases ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'Process';
+ALTER TABLE ncr_cases ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'Internal';
+ALTER TABLE ncr_cases ADD COLUMN IF NOT EXISTS verification_status TEXT NOT NULL DEFAULT 'Pending';
+ALTER TABLE ncr_cases ADD COLUMN IF NOT EXISTS containment_action TEXT;
+ALTER TABLE ncr_cases ADD COLUMN IF NOT EXISTS checklist JSONB NOT NULL DEFAULT '[]'::jsonb;
 
 CREATE TABLE IF NOT EXISTS invitations (
   id TEXT PRIMARY KEY,

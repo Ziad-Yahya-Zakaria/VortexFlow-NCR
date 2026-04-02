@@ -1,0 +1,31 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="vf-app-bg" x1="72" y1="52" x2="430" y2="452" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#101A2C"/>
+      <stop offset="1" stop-color="#08111E"/>
+    </linearGradient>
+    <linearGradient id="vf-app-frame" x1="96" y1="96" x2="416" y2="416" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8B436"/>
+      <stop offset="1" stop-color="#F97316"/>
+    </linearGradient>
+    <linearGradient id="vf-app-core" x1="154" y1="112" x2="360" y2="402" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FEBB3B"/>
+      <stop offset="1" stop-color="#F97316"/>
+    </linearGradient>
+    <linearGradient id="vf-app-flow" x1="166" y1="180" x2="330" y2="356" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7DD3FC"/>
+      <stop offset="1" stop-color="#3B82F6"/>
+    </linearGradient>
+  </defs>
+  <rect x="28" y="28" width="456" height="456" rx="118" fill="url(#vf-app-bg)"/>
+  <rect x="46" y="46" width="420" height="420" rx="100" stroke="url(#vf-app-frame)" stroke-width="12" opacity="0.44"/>
+  <path d="M256 78L380 142V286C380 349 337 404 256 438C175 404 132 349 132 286V142L256 78Z" fill="url(#vf-app-core)"/>
+  <path d="M256 114L348 162V282C348 325 319 364 256 395C193 364 164 325 164 282V162L256 114Z" fill="#111C30" opacity="0.92"/>
+  <path d="M204 162C204 151.507 212.507 143 223 143H286L321 178V282C321 292.493 312.493 301 302 301H223C212.507 301 204 292.493 204 282V162Z" fill="#F8FBFF"/>
+  <path d="M286 143L321 178H296C290.477 178 286 173.523 286 168V143Z" fill="#DBE6F7"/>
+  <rect x="227" y="191" width="70" height="14" rx="7" fill="#F5A524"/>
+  <rect x="227" y="221" width="58" height="14" rx="7" fill="#F5A524" opacity="0.74"/>
+  <rect x="227" y="251" width="46" height="14" rx="7" fill="#F5A524" opacity="0.48"/>
+  <path d="M169 308C182 272 218 246 258 246C303 246 344 278 356 320C337 352 303 381 256 402C219 390 190 362 169 308Z" fill="url(#vf-app-flow)"/>
+  <path d="M212 319L243 350L305 287" stroke="#07111D" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

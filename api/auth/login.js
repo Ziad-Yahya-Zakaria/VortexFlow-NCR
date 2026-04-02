@@ -34,6 +34,8 @@ module.exports = async (req, res) => {
         email,
         password_hash,
         role,
+        job_title,
+        is_verified,
         is_active,
         created_at,
         updated_at,

@@ -28,6 +28,7 @@ module.exports = async (req, res) => {
     const fullName = String(body.fullName || '').trim();
     const email = normalizeEmail(body.email);
     const password = String(body.password || '');
+    const jobTitle = String(body.jobTitle || 'الزوز مدير النظام').trim() || 'الزوز مدير النظام';
 
     if (!fullName || !email || !password) {
       const error = new Error('الاسم والبريد وكلمة المرور حقول مطلوبة.');
@@ -44,20 +45,26 @@ module.exports = async (req, res) => {
         full_name,
         email,
         password_hash,
-        role
+        role,
+        job_title,
+        is_verified
       )
       VALUES (
         ${id},
         ${fullName},
         ${email},
         ${passwordHash},
-        ${'admin'}
+        ${'admin'},
+        ${jobTitle},
+        ${true}
       )
       RETURNING
         id,
         full_name,
         email,
         role,
+        job_title,
+        is_verified,
         is_active,
         created_at,
         updated_at,
@@ -72,7 +79,7 @@ module.exports = async (req, res) => {
       action: 'user.created',
       message: `تم إنشاء الحساب الإداري الأول للمستخدم ${fullName}.`,
       actorId: id,
-      metadata: { email, role: 'admin' }
+      metadata: { email, role: 'admin', jobTitle, isVerified: true }
     });
 
     sendJson(res, 201, {

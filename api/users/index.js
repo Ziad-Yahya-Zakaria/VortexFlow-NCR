@@ -20,19 +20,38 @@ module.exports = async (req, res) => {
     const user = await requireUser(req);
 
     if (req.method === 'GET') {
-      const rows = await sql`
-        SELECT
-          id,
-          full_name,
-          email,
-          role,
-          is_active,
-          created_at,
-          updated_at,
-          last_login_at
-        FROM users
-        ORDER BY created_at ASC
-      `;
+      const rows = user.role === 'admin'
+        ? await sql`
+            SELECT
+              id,
+              full_name,
+              email,
+              role,
+              job_title,
+              is_verified,
+              is_active,
+              created_at,
+              updated_at,
+              last_login_at
+            FROM users
+            ORDER BY created_at ASC
+          `
+        : await sql`
+            SELECT
+              id,
+              full_name,
+              NULL::TEXT AS email,
+              role,
+              job_title,
+              is_verified,
+              is_active,
+              created_at,
+              updated_at,
+              NULL::TIMESTAMPTZ AS last_login_at
+            FROM users
+            WHERE is_active = TRUE
+            ORDER BY full_name ASC
+          `;
 
       sendJson(res, 200, {
         items: rows.map(sanitizeUser)
@@ -47,6 +66,8 @@ module.exports = async (req, res) => {
     const email = normalizeEmail(body.email);
     const password = String(body.password || '');
     const role = ['admin', 'engineer', 'viewer'].includes(body.role) ? body.role : 'viewer';
+    const jobTitle = String(body.jobTitle || '').trim() || null;
+    const isVerified = !!body.isVerified;
 
     if (!fullName || !email || !password) {
       const error = new Error('الاسم والبريد وكلمة المرور حقول مطلوبة.');
@@ -63,20 +84,26 @@ module.exports = async (req, res) => {
         full_name,
         email,
         password_hash,
-        role
+        role,
+        job_title,
+        is_verified
       )
       VALUES (
         ${id},
         ${fullName},
         ${email},
         ${passwordHash},
-        ${role}
+        ${role},
+        ${jobTitle},
+        ${isVerified}
       )
       RETURNING
         id,
         full_name,
         email,
         role,
+        job_title,
+        is_verified,
         is_active,
         created_at,
         updated_at,
@@ -89,7 +116,7 @@ module.exports = async (req, res) => {
       action: 'user.created',
       message: `تم إنشاء مستخدم جديد: ${fullName}.`,
       actorId: user.id,
-      metadata: { role, email }
+      metadata: { role, email, jobTitle, isVerified }
     });
 
     sendJson(res, 201, {

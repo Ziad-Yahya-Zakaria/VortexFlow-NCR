@@ -5,11 +5,13 @@ const postgres = require('postgres');
 
 const connectionString =
   process.env.DATABASE_URL ||
+  process.env.SUPABASE_DB_URL ||
+  process.env.SUPABASE_DATABASE_URL ||
   process.env.POSTGRES_URL ||
   process.env.POSTGRES_PRISMA_URL;
 
 if (!connectionString) {
-  throw new Error('DATABASE_URL is required for API routes.');
+  throw new Error('DATABASE_URL or SUPABASE_DB_URL is required for API routes.');
 }
 
 const sql = postgres(connectionString, {
@@ -25,12 +27,16 @@ const schemaStatements = [
       email TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'engineer',
+      job_title TEXT,
+      is_verified BOOLEAN NOT NULL DEFAULT FALSE,
       is_active BOOLEAN NOT NULL DEFAULT TRUE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       last_login_at TIMESTAMPTZ
     )`,
   'CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)',
+  'ALTER TABLE users ADD COLUMN IF NOT EXISTS job_title TEXT',
+  'ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT FALSE',
   `CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -54,12 +60,17 @@ const schemaStatements = [
       description TEXT NOT NULL,
       status TEXT NOT NULL,
       step INTEGER NOT NULL DEFAULT 1,
+      category TEXT NOT NULL DEFAULT 'Process',
+      source TEXT NOT NULL DEFAULT 'Internal',
       priority TEXT NOT NULL DEFAULT 'Medium',
       severity TEXT NOT NULL DEFAULT 'Major',
+      verification_status TEXT NOT NULL DEFAULT 'Pending',
       due_date TIMESTAMPTZ,
+      containment_action TEXT,
       root_cause TEXT,
       corrective_action TEXT,
       tags JSONB NOT NULL DEFAULT '[]'::jsonb,
+      checklist JSONB NOT NULL DEFAULT '[]'::jsonb,
       owner_id TEXT REFERENCES users(id) ON DELETE SET NULL,
       department_id TEXT REFERENCES departments(id) ON DELETE SET NULL,
       color_code TEXT NOT NULL DEFAULT '#3b82f6',
@@ -71,6 +82,11 @@ const schemaStatements = [
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`,
+  "ALTER TABLE ncr_cases ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'Process'",
+  "ALTER TABLE ncr_cases ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'Internal'",
+  "ALTER TABLE ncr_cases ADD COLUMN IF NOT EXISTS verification_status TEXT NOT NULL DEFAULT 'Pending'",
+  'ALTER TABLE ncr_cases ADD COLUMN IF NOT EXISTS containment_action TEXT',
+  "ALTER TABLE ncr_cases ADD COLUMN IF NOT EXISTS checklist JSONB NOT NULL DEFAULT '[]'::jsonb",
   'CREATE INDEX IF NOT EXISTS idx_ncr_cases_status ON ncr_cases(status)',
   'CREATE INDEX IF NOT EXISTS idx_ncr_cases_department_id ON ncr_cases(department_id)',
   'CREATE INDEX IF NOT EXISTS idx_ncr_cases_owner_id ON ncr_cases(owner_id)',

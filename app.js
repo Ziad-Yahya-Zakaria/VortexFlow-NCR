@@ -129,6 +129,10 @@ function fileToBase64(file) {
   });
 }
 
+function getAttachmentSource(attachedDocument) {
+  return attachedDocument?.url || attachedDocument?.base64 || '';
+}
+
 /** Get SLA status object from elapsed days */
 function getSLAStatus(days) {
   if (days > APP_CONFIG.SLA_CRITICAL_DAYS) {
@@ -829,9 +833,10 @@ function openNCRDetail(id) {
   let attachHTML = '';
   if (ncr.attachedDocument) {
     const isImg = ncr.attachedDocument.type && ncr.attachedDocument.type.startsWith('image/');
+    const attachmentSrc = getAttachmentSource(ncr.attachedDocument);
     attachHTML = isImg
-      ? `<img src="${ncr.attachedDocument.base64}" alt="مرفق" class="attachment-preview" loading="lazy">`
-      : `<a href="${ncr.attachedDocument.base64}" download="${escapeHTML(ncr.attachedDocument.name)}" 
+      ? `<img src="${attachmentSrc}" alt="مرفق" class="attachment-preview" loading="lazy">`
+      : `<a href="${attachmentSrc}" download="${escapeHTML(ncr.attachedDocument.name)}" 
            class="btn btn-secondary btn-sm" style="display:inline-flex">
            <i class="fas fa-download" aria-hidden="true"></i>${escapeHTML(ncr.attachedDocument.name)}
          </a>`;

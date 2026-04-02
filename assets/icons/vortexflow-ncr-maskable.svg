@@ -1,0 +1,26 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="vf-mask-bg" x1="54" y1="44" x2="458" y2="470" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#101A2C"/>
+      <stop offset="1" stop-color="#07101D"/>
+    </linearGradient>
+    <linearGradient id="vf-mask-core" x1="144" y1="116" x2="366" y2="404" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FBBF24"/>
+      <stop offset="1" stop-color="#F97316"/>
+    </linearGradient>
+    <linearGradient id="vf-mask-flow" x1="174" y1="192" x2="336" y2="360" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7DD3FC"/>
+      <stop offset="1" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="136" fill="url(#vf-mask-bg)"/>
+  <path d="M256 96L368 154V286C368 343 331 392 256 426C181 392 144 343 144 286V154L256 96Z" fill="url(#vf-mask-core)"/>
+  <path d="M256 128L336 170V280C336 319 311 352 256 381C201 352 176 319 176 280V170L256 128Z" fill="#111B2E"/>
+  <path d="M206 176C206 166.059 214.059 158 224 158H285L317 190V282C317 291.941 308.941 300 299 300H224C214.059 300 206 291.941 206 282V176Z" fill="#FFFDF9"/>
+  <path d="M285 158L317 190H295C289.477 190 285 185.523 285 180V158Z" fill="#F1E0B8"/>
+  <rect x="228" y="204" width="66" height="14" rx="7" fill="#D99813"/>
+  <rect x="228" y="232" width="54" height="14" rx="7" fill="#D99813" opacity="0.72"/>
+  <rect x="228" y="260" width="44" height="14" rx="7" fill="#D99813" opacity="0.46"/>
+  <path d="M174 304C187 273 219 250 256 250C297 250 332 277 344 314C325 346 293 372 256 390C222 380 193 353 174 304Z" fill="url(#vf-mask-flow)"/>
+  <path d="M214 315L243 344L300 289" stroke="#08111E" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

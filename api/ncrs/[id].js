@@ -1,9 +1,10 @@
 'use strict';
 
-const { sql, ensureSchema, logActivity } = require('../_lib/db');
+const { sql, ensureSchema, generateId, logActivity } = require('../_lib/db');
 const { allowMethods, sendJson, sendError, readJson, getPathId } = require('../_lib/http');
 const { requireUser, assertRole } = require('../_lib/auth');
 const { serializeNcr } = require('../_lib/models');
+const { deleteAttachmentObject, resolveNcrAttachment, uploadAttachmentObject } = require('../_lib/storage');
 
 function normalizeTags(value) {
   if (value === undefined) {
@@ -22,6 +23,25 @@ function normalizeTags(value) {
     .filter(Boolean);
 }
 
+function normalizeChecklist(value) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map(item => ({
+      id: String(item?.id || generateId()),
+      label: String(item?.label || '').trim(),
+      done: !!item?.done,
+      note: String(item?.note || '').trim()
+    }))
+    .filter(item => item.label);
+}
+
 function normalizeDate(value) {
   if (value === undefined) {
     return undefined;
@@ -36,6 +56,8 @@ function normalizeDate(value) {
 }
 
 module.exports = async (req, res) => {
+  let uploadedAttachment = null;
+
   if (!allowMethods(req, res, ['GET', 'PATCH', 'DELETE'])) {
     return;
   }
@@ -70,8 +92,10 @@ module.exports = async (req, res) => {
         throw error;
       }
 
+      const hydratedRow = await resolveNcrAttachment(row);
+
       sendJson(res, 200, {
-        item: serializeNcr(row, [])
+        item: serializeNcr(hydratedRow, [])
       });
       return;
     }
@@ -93,22 +117,40 @@ module.exports = async (req, res) => {
         throw error;
       }
 
+      const nextAttachment = body.attachedDocument !== undefined
+        ? await uploadAttachmentObject(id, body.attachedDocument || null)
+        : existing.attached_document;
+
+      if (
+        body.attachedDocument !== undefined &&
+        nextAttachment &&
+        nextAttachment.path &&
+        nextAttachment.path !== existing.attached_document?.path
+      ) {
+        uploadedAttachment = nextAttachment;
+      }
+
       const nextValues = {
         caseNumber: body.caseNumber !== undefined ? String(body.caseNumber).trim() : existing.case_number,
         subCase: body.subCase !== undefined ? String(body.subCase).trim() || null : existing.sub_case,
         description: body.description !== undefined ? String(body.description).trim() : existing.description,
         status: body.status !== undefined ? body.status : existing.status,
         step: body.step !== undefined ? Number.parseInt(body.step, 10) || 1 : existing.step,
+        category: body.category !== undefined ? body.category : existing.category,
+        source: body.source !== undefined ? body.source : existing.source,
         priority: body.priority !== undefined ? body.priority : existing.priority,
         severity: body.severity !== undefined ? body.severity : existing.severity,
+        verificationStatus: body.verificationStatus !== undefined ? body.verificationStatus : existing.verification_status,
         dueDate: body.dueDate !== undefined ? normalizeDate(body.dueDate) : existing.due_date,
+        containmentAction: body.containmentAction !== undefined ? String(body.containmentAction).trim() || null : existing.containment_action,
         rootCause: body.rootCause !== undefined ? String(body.rootCause).trim() || null : existing.root_cause,
         correctiveAction: body.correctiveAction !== undefined ? String(body.correctiveAction).trim() || null : existing.corrective_action,
         tags: body.tags !== undefined ? normalizeTags(body.tags) : existing.tags,
+        checklist: body.checklist !== undefined ? normalizeChecklist(body.checklist) : existing.checklist,
         ownerId: body.ownerId !== undefined ? body.ownerId || null : existing.owner_id,
         departmentId: body.departmentId !== undefined ? body.departmentId || null : existing.department_id,
         colorCode: body.colorCode !== undefined ? body.colorCode : existing.color_code,
-        attachedDocument: body.attachedDocument !== undefined ? body.attachedDocument : existing.attached_document
+        attachedDocument: nextAttachment
       };
 
       const [updated] = await sql`
@@ -119,12 +161,17 @@ module.exports = async (req, res) => {
           description = ${nextValues.description},
           status = ${nextValues.status},
           step = ${nextValues.step},
+          category = ${nextValues.category},
+          source = ${nextValues.source},
           priority = ${nextValues.priority},
           severity = ${nextValues.severity},
+          verification_status = ${nextValues.verificationStatus},
           due_date = ${nextValues.dueDate},
+          containment_action = ${nextValues.containmentAction},
           root_cause = ${nextValues.rootCause},
           corrective_action = ${nextValues.correctiveAction},
           tags = ${nextValues.tags},
+          checklist = ${nextValues.checklist},
           owner_id = ${nextValues.ownerId},
           department_id = ${nextValues.departmentId},
           color_code = ${nextValues.colorCode},
@@ -138,12 +185,6 @@ module.exports = async (req, res) => {
           NULL::TEXT AS owner_name
       `;
 
-      if (!updated) {
-        const error = new Error('التقرير غير موجود.');
-        error.status = 404;
-        throw error;
-      }
-
       await logActivity({
         entityType: 'ncr',
         entityId: id,
@@ -152,13 +193,31 @@ module.exports = async (req, res) => {
         actorId: user.id,
         metadata: {
           status: updated.status,
+          category: updated.category,
+          source: updated.source,
           priority: updated.priority,
-          severity: updated.severity
+          severity: updated.severity,
+          verificationStatus: updated.verification_status,
+          checklistCompleted: Array.isArray(updated.checklist)
+            ? updated.checklist.filter(item => item.done).length
+            : 0
         }
       });
 
+      const hydratedUpdated = await resolveNcrAttachment(updated);
+
+      if (
+        body.attachedDocument !== undefined &&
+        existing.attached_document &&
+        existing.attached_document.path !== nextValues.attachedDocument?.path
+      ) {
+        await deleteAttachmentObject(existing.attached_document).catch(() => {});
+      }
+
+      uploadedAttachment = null;
+
       sendJson(res, 200, {
-        item: serializeNcr(updated, [])
+        item: serializeNcr(hydratedUpdated, [])
       });
       return;
     }
@@ -178,6 +237,8 @@ module.exports = async (req, res) => {
       throw error;
     }
 
+    await deleteAttachmentObject(deleted.attached_document).catch(() => {});
+
     await logActivity({
       entityType: 'ncr',
       entityId: id,
@@ -190,6 +251,9 @@ module.exports = async (req, res) => {
       item: serializeNcr(deleted, [])
     });
   } catch (error) {
+    if (uploadedAttachment) {
+      await deleteAttachmentObject(uploadedAttachment).catch(() => {});
+    }
     sendError(res, error);
   }
 };

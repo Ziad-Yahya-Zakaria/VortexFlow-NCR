@@ -4,6 +4,12 @@ const { sql, ensureSchema, generateId, logActivity } = require('../_lib/db');
 const { allowMethods, sendJson, sendError, readJson } = require('../_lib/http');
 const { requireUser, assertRole } = require('../_lib/auth');
 const { serializeActivity, serializeNcr } = require('../_lib/models');
+const {
+  deleteAttachmentObject,
+  resolveNcrAttachment,
+  resolveNcrAttachments,
+  uploadAttachmentObject
+} = require('../_lib/storage');
 
 function normalizeTags(value) {
   if (Array.isArray(value)) {
@@ -18,6 +24,21 @@ function normalizeTags(value) {
     .filter(Boolean);
 }
 
+function normalizeChecklist(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map(item => ({
+      id: String(item?.id || generateId()),
+      label: String(item?.label || '').trim(),
+      done: !!item?.done,
+      note: String(item?.note || '').trim()
+    }))
+    .filter(item => item.label);
+}
+
 function normalizeDate(value) {
   if (!value) {
     return null;
@@ -28,6 +49,8 @@ function normalizeDate(value) {
 }
 
 module.exports = async (req, res) => {
+  let uploadedAttachment = null;
+
   if (!allowMethods(req, res, ['GET', 'POST'])) {
     return;
   }
@@ -73,8 +96,10 @@ module.exports = async (req, res) => {
         historyByEntity.set(row.entity_id, existing);
       }
 
+      const hydratedRows = await resolveNcrAttachments(rows);
+
       sendJson(res, 200, {
-        items: rows.map(row => serializeNcr(row, historyByEntity.get(row.id) || []))
+        items: hydratedRows.map(row => serializeNcr(row, historyByEntity.get(row.id) || []))
       });
       return;
     }
@@ -87,18 +112,31 @@ module.exports = async (req, res) => {
     const status = ['Open', 'In Progress', 'Closed'].includes(body.status)
       ? body.status
       : 'Open';
+    const category = ['Process', 'Product', 'Supplier', 'Customer', 'Safety', 'Documentation'].includes(body.category)
+      ? body.category
+      : 'Process';
+    const source = ['Internal', 'Customer', 'Audit', 'Supplier', 'Production', 'Field'].includes(body.source)
+      ? body.source
+      : 'Internal';
     const priority = ['Low', 'Medium', 'High', 'Critical'].includes(body.priority)
       ? body.priority
       : 'Medium';
     const severity = ['Minor', 'Major', 'Critical'].includes(body.severity)
       ? body.severity
       : 'Major';
+    const verificationStatus = ['Pending', 'Ready', 'Verified'].includes(body.verificationStatus)
+      ? body.verificationStatus
+      : 'Pending';
 
     if (!caseNumber || !description) {
       const error = new Error('رقم الحالة والوصف حقول مطلوبة.');
       error.status = 400;
       throw error;
     }
+
+    const ncrId = generateId();
+    const attachedDocument = await uploadAttachmentObject(ncrId, body.attachedDocument || null);
+    uploadedAttachment = attachedDocument;
 
     const [created] = await sql`
       INSERT INTO ncr_cases (
@@ -108,12 +146,17 @@ module.exports = async (req, res) => {
         description,
         status,
         step,
+        category,
+        source,
         priority,
         severity,
+        verification_status,
         due_date,
+        containment_action,
         root_cause,
         corrective_action,
         tags,
+        checklist,
         owner_id,
         department_id,
         color_code,
@@ -124,22 +167,27 @@ module.exports = async (req, res) => {
         date
       )
       VALUES (
-        ${generateId()},
+        ${ncrId},
         ${caseNumber},
         ${String(body.subCase || '').trim() || null},
         ${description},
         ${status},
         ${Number.parseInt(body.step, 10) || 1},
+        ${category},
+        ${source},
         ${priority},
         ${severity},
+        ${verificationStatus},
         ${normalizeDate(body.dueDate)},
+        ${String(body.containmentAction || '').trim() || null},
         ${String(body.rootCause || '').trim() || null},
         ${String(body.correctiveAction || '').trim() || null},
         ${normalizeTags(body.tags)},
+        ${normalizeChecklist(body.checklist)},
         ${body.ownerId || null},
         ${body.departmentId || null},
         ${String(body.colorCode || '#3b82f6')},
-        ${body.attachedDocument || null},
+        ${attachedDocument},
         ${'remote'},
         ${user.id},
         ${user.id},
@@ -157,13 +205,25 @@ module.exports = async (req, res) => {
       action: 'ncr.created',
       message: `تم إنشاء التقرير ${caseNumber}.`,
       actorId: user.id,
-      metadata: { status, priority, severity }
+      metadata: {
+        status,
+        category,
+        source,
+        priority,
+        severity,
+        verificationStatus
+      }
     });
 
+    const hydratedCreated = await resolveNcrAttachment(created);
+
     sendJson(res, 201, {
-      item: serializeNcr(created, [])
+      item: serializeNcr(hydratedCreated, [])
     });
   } catch (error) {
+    if (uploadedAttachment) {
+      await deleteAttachmentObject(uploadedAttachment).catch(() => {});
+    }
     sendError(res, error);
   }
 };
