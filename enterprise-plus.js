@@ -277,6 +277,10 @@
     }
   }
 
+  if (typeof window.formatLastSync !== 'function') {
+    window.formatLastSync = formatLastSyncSafe;
+  }
+
   function canAccessView(view) {
     const role = getCurrentRole();
     const matrix = {

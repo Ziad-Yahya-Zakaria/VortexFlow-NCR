@@ -740,6 +740,31 @@
   opacity: 0.96;
 }
 
+html,
+body {
+  overscroll-behavior-y: contain;
+}
+
+body {
+  -webkit-tap-highlight-color: transparent;
+}
+
+#main-content {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+.btn,
+.icon-btn,
+.nav-item,
+.export-btn,
+.filter-pill,
+.card-action-btn,
+.checklist-toggle,
+.verify-badge {
+  touch-action: manipulation;
+}
+
 @media (max-width: 900px) {
   .custom-upload-row {
     grid-template-columns: 1fr;
@@ -749,5 +774,145 @@
   .header-status-badge {
     width: fit-content;
     max-width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  #app-header {
+    gap: 10px;
+    padding-inline: 12px;
+  }
+
+  .header-logo {
+    min-width: 0;
+    gap: 10px;
+  }
+
+  .header-logo > div:last-child {
+    min-width: 0;
+  }
+
+  .header-title {
+    font-size: 17px;
+  }
+
+  .header-subtitle {
+    font-size: 9px;
+    letter-spacing: 0.06em;
+  }
+
+  .header-actions {
+    gap: 6px;
+  }
+
+  .icon-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+
+  .header-status-badge {
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    padding: 7px 10px;
+  }
+
+  #main-content {
+    padding-bottom: calc(var(--nav-height) + 24px + env(safe-area-inset-bottom, 0px));
+  }
+
+  #bottom-nav {
+    padding-inline: 6px;
+    box-shadow: 0 -10px 34px rgba(0, 0, 0, 0.42);
+  }
+
+  .nav-item {
+    min-height: 72px;
+    padding: 10px 4px 10px;
+    font-size: 11px;
+    gap: 5px;
+  }
+
+  .nav-item i {
+    font-size: 21px;
+  }
+
+  .section-card,
+  .analytics-card,
+  .inquiry-panel,
+  .report-panel,
+  .report-detail-card {
+    border-radius: 18px;
+  }
+
+  .dashboard-hero,
+  .view-form-container,
+  .dept-list,
+  .section-card,
+  .modal-body,
+  .bottom-sheet {
+    scroll-margin-top: calc(var(--header-height) + 10px);
+  }
+
+  .btn-group {
+    flex-direction: column;
+  }
+
+  .btn-group .btn,
+  .settings-actions .btn,
+  .modal-footer .btn {
+    min-height: 46px;
+  }
+
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 8px;
+  }
+
+  .modal-box {
+    max-width: none;
+    max-height: 88dvh;
+    border-radius: 22px 22px 16px 16px;
+  }
+
+  .modal-header,
+  .modal-body,
+  .modal-footer {
+    padding-inline: 16px;
+  }
+
+  .modal-footer {
+    flex-wrap: wrap;
+  }
+
+  .bottom-sheet {
+    border-radius: 24px 24px 0 0;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+  }
+
+  .sheet-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .export-btn {
+    min-height: 92px;
+  }
+
+  .stats-grid {
+    gap: 10px;
+  }
+
+  .user-card-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .user-card-actions .btn,
+  .user-card-actions .badge {
+    flex: 1;
+    text-align: center;
+    justify-content: center;
   }
 }

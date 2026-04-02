@@ -41,7 +41,7 @@
   };
 
   Object.assign(APP_CONFIG, {
-    version: '2.1.0',
+    version: '2.3.2',
     MAX_LOCAL_FILE_SIZE: 10 * 1024 * 1024,
     MAX_REMOTE_FILE_SIZE: 3 * 1024 * 1024,
     PRIORITY_LABELS: {

@@ -1729,6 +1729,7 @@ async function registerServiceWorker() {
   try {
     const registration = await navigator.serviceWorker.register('./sw.js');
     console.log('[VF] Service Worker registered:', registration.scope);
+    registration.update().catch(() => {});
 
     // Watch for updates
     registration.addEventListener('updatefound', () => {
