@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 (function enterprisePlusLayer() {
   if (typeof APP_CONFIG === 'undefined' || typeof state === 'undefined') {
@@ -10,27 +10,9 @@
   const DEMO_DEPARTMENTS = new Set(['الإنتاج', 'الجودة', 'الهندسة', 'المشتريات', 'الصيانة']);
   const DEMO_ASSIGNEES = new Set(['عبد الله علي', 'محمد الزهراني']);
   const REPORT_ROWS_PER_PAGE = 8;
-  const SECRET_TAP_TARGET = 7;
-  const SECRET_COPY_HTML = `
-    <p>اهدا ياعم الحج انتا مفكر انك كده جامد انا دماغي وجعاني مش نقصاك انتا شكلك فاضي.</p>
-    <p>اهم حاجة تعرف حاجة واحدة بس الزوز هوا الزعيم وده رقم الزوز عشان لو عايز تتواصل معاه <a href="tel:01124148723">01124148723</a>.</p>
-    <p>الزوز هوا اللي مبرمج البرنامج ده هوا وفريق معاه تاني. ماشي في امان الله يابا سلام.</p>
-  `;
-  const SECRET_MODAL_HTML = `
-    <div id="secret-easter-egg-modal" class="secret-modal-overlay" aria-hidden="true">
-      <div class="secret-modal-box">
-        <button class="modal-close" onclick="closeSecretEasterEgg()" aria-label="إغلاق">
-          <i class="fas fa-times" aria-hidden="true"></i>
-        </button>
-        <div class="secret-modal-title">رسالة سرية</div>
-        <div class="secret-modal-copy">
-          <p>اهداء ياعم الحج انتا مفكر انك كده جامد انا دماغي وجعاني مش نقصاك انتا شكلك فاضي.</p>
-          <p>اهم حاجة تعرف حاجة واحدة بس الزوز هوا الزعيم وده رقم الزوز عشان لو عايز تتواصل معاه <a href="tel:01124148723">01124148723</a>.</p>
-          <p>الزوز هوا اللي مبرمج البرنامج ده هوا وفريق معاه تاني. ماشي في امان الله يابا سلام.</p>
-        </div>
-      </div>
-    </div>
-  `;
+  const SECRET_TAP_TARGET = Number.POSITIVE_INFINITY;
+  const SECRET_COPY_HTML = '';
+  const SECRET_MODAL_HTML = '';
 
   const previousBootstrap = window.VortexFlowBootstrap;
   const previousLoadAllData = window.loadAllData;
@@ -68,7 +50,18 @@
 
     return fetch(path, requestOptions).then(async response => {
       const text = await response.text();
-      const data = text ? JSON.parse(text) : {};
+      let data = {};
+
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch (_) {
+          data = {
+            error: text.trim() || `HTTP ${response.status}`
+          };
+        }
+      }
+
       if (!response.ok) {
         throw new Error(data.error || `HTTP ${response.status}`);
       }
@@ -349,13 +342,13 @@
   }
 
   function ensureHeaderStatusBadge() {
-    const brandBlock = document.querySelector('#app-header .header-logo > div:last-child');
-    if (!brandBlock || document.getElementById('header-status-badge')) {
+    const statusSlot = document.getElementById('header-status-slot');
+    if (!statusSlot || document.getElementById('header-status-badge')) {
       return;
     }
 
-    brandBlock.insertAdjacentHTML(
-      'beforeend',
+    statusSlot.insertAdjacentHTML(
+      'afterbegin',
       '<button type="button" id="header-status-badge" class="header-status-badge" onclick="handleHeaderStatusClick()" aria-live="polite"></button>'
     );
   }
@@ -918,13 +911,7 @@
   }
 
   function ensureSecretModal() {
-    if (!document.getElementById('secret-easter-egg-modal')) {
-      document.body.insertAdjacentHTML('beforeend', SECRET_MODAL_HTML);
-    }
-    const copy = document.querySelector('#secret-easter-egg-modal .secret-modal-copy');
-    if (copy) {
-      copy.innerHTML = SECRET_COPY_HTML;
-    }
+    document.getElementById('secret-easter-egg-modal')?.remove();
   }
 
   function ensureExportStage() {
@@ -942,21 +929,11 @@
 
   function enhanceHeaderSession() {
     const container = document.getElementById('header-session');
-    if (!container || !state.currentUser) {
+    if (!container) {
       return;
     }
 
-    container.innerHTML = `
-      <div class="session-chip enhanced">
-        <span class="sync-dot"></span>
-        <span>${escapeHTML(state.currentUser.fullName)}</span>
-        ${buildVerificationBadge(state.currentUser)}
-        <span class="session-chip-role">${escapeHTML(getRoleLabel(state.currentUser.role))}</span>
-        <span class="session-chip-title">${escapeHTML(getUserTitle(state.currentUser))}</span>
-      </div>
-      <button type="button" class="btn btn-secondary btn-sm" onclick="navigateTo('settings')">حسابي</button>
-      <button type="button" class="btn btn-secondary btn-sm" onclick="logoutCurrentUser()">خروج</button>
-    `;
+    container.classList.toggle('has-session', !!state.currentUser);
   }
 
   function renderAnalyticsDashboard() {
@@ -2278,3 +2255,4 @@
   shareAppSummary = window.shareAppSummary;
 
 })();
+

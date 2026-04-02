@@ -1681,6 +1681,81 @@ function showToast(message, type = 'info', duration) {
   }
 }
 
+const GLOBAL_NOTICE_DEBOUNCE_MS = 2500;
+let lastGlobalNotice = { message: '', at: 0 };
+
+function getFriendlyErrorMessage(reason) {
+  const raw = String(reason?.message || reason || '').trim();
+  if (!raw) {
+    return 'حدث خطأ غير متوقع. حاول مرة أخرى.';
+  }
+
+  if (/Failed to fetch|NetworkError|Load failed/i.test(raw)) {
+    return 'تعذر الوصول إلى الخادم. تحقق من الاتصال ثم أعد المحاولة.';
+  }
+
+  if (/AbortError/i.test(raw)) {
+    return 'تم إلغاء العملية قبل اكتمالها.';
+  }
+
+  return raw;
+}
+
+function notifyGlobalIssue(message, type = 'error', duration = 6000) {
+  const normalized = String(message || '').trim();
+  if (!normalized) {
+    return;
+  }
+
+  const now = Date.now();
+  if (lastGlobalNotice.message === normalized && now - lastGlobalNotice.at < GLOBAL_NOTICE_DEBOUNCE_MS) {
+    return;
+  }
+
+  lastGlobalNotice = { message: normalized, at: now };
+  showToast(normalized, type, duration);
+}
+
+window.addEventListener('error', event => {
+  const target = event.target;
+
+  if (target instanceof HTMLImageElement) {
+    notifyGlobalIssue('تعذر تحميل أحد العناصر المرئية.', 'warning', 5000);
+    return;
+  }
+
+  if (target instanceof HTMLScriptElement) {
+    notifyGlobalIssue('تعذر تحميل جزء من التطبيق. أعد تحميل الصفحة.', 'error', 7000);
+    return;
+  }
+
+  const message = getFriendlyErrorMessage(event.error || event.message);
+  if (!message) {
+    return;
+  }
+
+  console.error('[VF] Unhandled error:', event.error || event.message);
+  notifyGlobalIssue(message, 'error', 7000);
+});
+
+window.addEventListener('unhandledrejection', event => {
+  if (event.reason?.name === 'AbortError') {
+    return;
+  }
+
+  const message = getFriendlyErrorMessage(event.reason);
+  console.error('[VF] Unhandled promise rejection:', event.reason);
+  notifyGlobalIssue(message, 'error', 7000);
+});
+
+window.addEventListener('online', () => {
+  notifyGlobalIssue('عاد الاتصال بالإنترنت.', 'success', 3200);
+});
+
+window.addEventListener('offline', () => {
+  notifyGlobalIssue('أنت الآن في وضع دون اتصال. سيستمر العمل محلياً.', 'warning', 6000);
+});
+
 /* ============================================================
    SECTION 18: ONBOARDING
    ============================================================ */

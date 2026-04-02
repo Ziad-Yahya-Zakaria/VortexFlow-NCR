@@ -87,17 +87,18 @@
 
     <!-- APP HEADER -->
     <header id="app-header" role="banner">
+      <div class="header-main">
       <div class="header-logo">
         <div class="logo-icon has-image" aria-hidden="true">
           <img src="assets/icons/vortexflow-ncr-icon.svg" alt="VortexFlow NCR" class="brand-logo-image">
         </div>
-        <div>
+        <div class="header-brand-copy">
           <div class="header-title font-rajdhani">VortexFlow</div>
           <div class="header-subtitle">NCR System</div>
         </div>
       </div>
 
-      <div class="header-actions">
+      <div class="header-actions" aria-label="Quick actions">
         <button class="icon-btn" onclick="printCurrentReport()" title="طباعة" aria-label="طباعة">
           <i class="fas fa-print" aria-hidden="true"></i>
         </button>
@@ -110,6 +111,12 @@
         <button class="icon-btn" onclick="navigateTo('settings')" title="الإعدادات" aria-label="الإعدادات">
           <i class="fas fa-sliders" aria-hidden="true"></i>
         </button>
+      </div>
+      </div>
+
+      <div class="header-utility">
+        <div id="header-status-slot" class="header-status-slot" aria-live="polite"></div>
+        <div id="header-session" class="header-session" aria-live="polite" aria-label="Account status"></div>
       </div>
     </header>
 

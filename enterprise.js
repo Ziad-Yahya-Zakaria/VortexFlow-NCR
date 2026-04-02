@@ -523,7 +523,17 @@
 
     const response = await fetch(path, requestOptions);
     const text = await response.text();
-    const data = text ? JSON.parse(text) : {};
+    let data = {};
+
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch (_) {
+        data = {
+          error: text.trim() || `HTTP ${response.status}`
+        };
+      }
+    }
 
     if (!response.ok) {
       const error = new Error(data.error || `HTTP ${response.status}`);
@@ -550,7 +560,9 @@
   function injectEnterpriseMarkup() {
     if (!document.getElementById('sync-banner')) {
       const headerActions = document.querySelector('.header-actions');
-      headerActions?.insertAdjacentHTML('beforebegin', '<div id="header-session" class="header-session"></div>');
+      if (headerActions && !document.getElementById('header-session')) {
+        headerActions.insertAdjacentHTML('beforebegin', '<div id="header-session" class="header-session"></div>');
+      }
 
       const mainContent = document.getElementById('main-content');
       mainContent?.insertAdjacentHTML(
@@ -914,20 +926,23 @@
     }
 
     if (isRemoteMode()) {
+      const roleLabel = APP_CONFIG.ROLE_LABELS[state.currentUser.role] || state.currentUser.role;
       container.innerHTML = `
-        <div class="session-chip">
-          <span class="sync-dot"></span>
-          <span>${escapeHTML(state.currentUser.fullName)}</span>
-          <span class="session-chip-role">${escapeHTML(APP_CONFIG.ROLE_LABELS[state.currentUser.role] || state.currentUser.role)}</span>
+        <div class="session-chip" title="${escapeHTML(roleLabel)}">
+          <span class="session-chip-avatar">${escapeHTML(getInitials(state.currentUser.fullName))}</span>
+          <span class="session-chip-stack">
+            <strong class="session-chip-name">${escapeHTML(state.currentUser.fullName)}</strong>
+            <span class="session-chip-role">${escapeHTML(roleLabel)}</span>
+          </span>
         </div>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="logoutCurrentUser()">خروج</button>
+        <button type="button" class="btn btn-secondary btn-sm header-session-action" onclick="logoutCurrentUser()">خروج</button>
       `;
       return;
     }
 
     if (state.backend.available) {
       container.innerHTML = `
-        <button type="button" class="btn btn-primary btn-sm" onclick="openAuthModal()">
+        <button type="button" class="btn btn-primary btn-sm header-session-action" onclick="openAuthModal()">
           <i class="fas fa-user-shield" aria-hidden="true"></i>
           دخول
         </button>
@@ -935,13 +950,7 @@
       return;
     }
 
-    container.innerHTML = `
-      <div class="session-chip local">
-        <span class="sync-dot warning"></span>
-        <span>وضع محلي</span>
-        <span class="session-chip-role">Offline</span>
-      </div>
-    `;
+    container.innerHTML = '';
   }
 
   function renderSyncBanner() {
