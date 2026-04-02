@@ -42,6 +42,7 @@
   state.filter.startDate = state.filter.startDate || '';
   state.filter.endDate = state.filter.endDate || '';
   state.inquiryQuery = state.inquiryQuery || '';
+  state.sessionOverview = state.sessionOverview || { count: 0, items: [], loading: false };
 
   function requestJson(path, options = {}) {
     const headers = {
@@ -789,6 +790,17 @@
           </div>
         </div>
         <div id="account-security-summary" class="settings-summary" style="margin-bottom:14px"></div>
+        <div id="account-session-overview" class="session-overview"></div>
+        <div class="btn-group account-session-actions">
+          <button type="button" class="btn btn-secondary" onclick="refreshSessionOverview()">
+            <i class="fas fa-arrows-rotate" aria-hidden="true"></i>
+            تحديث الجلسات
+          </button>
+          <button type="button" class="btn btn-outline" onclick="logoutOtherSessions()">
+            <i class="fas fa-shield-halved" aria-hidden="true"></i>
+            إنهاء الجلسات الأخرى
+          </button>
+        </div>
         <form id="account-password-form" onsubmit="handleAccountPasswordSubmit(event)">
           <div class="form-row">
             <div class="form-group">
@@ -838,6 +850,64 @@
       <div class="settings-summary-item">
         <span>التحقق</span>
         <strong>${isUserVerified(state.currentUser) ? 'موثق' : 'غير موثق'}</strong>
+      </div>
+    `;
+    container.insertAdjacentHTML('beforeend', `
+      <div class="settings-summary-item wide">
+        <span>الجلسات</span>
+        <strong>كل مستخدم يحصل على جلسة مستقلة وآمنة على جهازه أو متصفحه. إذا استخدم أكثر من شخص نفس الجهاز، استخدم الخروج أو إنهاء الجلسات الأخرى.</strong>
+      </div>
+    `);
+    renderSessionOverview();
+  }
+
+  function renderSessionOverview() {
+    const container = document.getElementById('account-session-overview');
+    if (!container) {
+      return;
+    }
+
+    if (!state.currentUser || !state.backend?.available) {
+      container.innerHTML = '';
+      return;
+    }
+
+    if (state.sessionOverview?.loading) {
+      container.innerHTML = `
+        <div class="session-overview-card">
+          <div class="session-overview-head">
+            <strong>الجلسات النشطة</strong>
+            <span>جارٍ التحميل...</span>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    const items = Array.isArray(state.sessionOverview?.items) ? state.sessionOverview.items : [];
+    const count = Number(state.sessionOverview?.count || items.length || 0);
+    const visibleItems = items.slice(0, 4);
+
+    container.innerHTML = `
+      <div class="session-overview-card">
+        <div class="session-overview-head">
+          <strong>الجلسات النشطة</strong>
+          <span>${count} جلسة</span>
+        </div>
+        <p class="session-overview-copy">الجلسات مرتبطة بهذا الحساب فقط، وليست مشتركة مع بقية مستخدمي النظام.</p>
+        ${visibleItems.length
+          ? `<div class="session-list">
+              ${visibleItems.map(item => `
+                <div class="session-list-item ${item.isCurrent ? 'current' : ''}">
+                  <div>
+                    <div class="session-list-title">${escapeHTML(item.isCurrent ? 'هذه الجلسة الحالية' : (item.userAgent || 'جهاز آخر'))}</div>
+                    <div class="session-list-meta">آخر نشاط: ${escapeHTML(formatDateTime(item.lastSeenAt || item.createdAt))}</div>
+                  </div>
+                  <span class="badge ${item.isCurrent ? 'badge-blue' : 'badge-gray'}">${item.isCurrent ? 'الحالية' : 'نشطة'}</span>
+                </div>
+              `).join('')}
+            </div>`
+          : '<div class="text-subtle fs-xs">لا توجد جلسات إضافية حالياً.</div>'}
       </div>
     `;
   }
@@ -1772,6 +1842,45 @@
     }
   };
 
+  window.refreshSessionOverview = async function refreshSessionOverview() {
+    if (!state.currentUser || !state.backend?.available) {
+      state.sessionOverview = { count: 0, items: [], loading: false };
+      renderSessionOverview();
+      return;
+    }
+
+    state.sessionOverview = { ...(state.sessionOverview || {}), loading: true };
+    renderSessionOverview();
+
+    try {
+      const response = await requestJson('/api/auth/sessions');
+      state.sessionOverview = {
+        count: Number(response.count || 0),
+        items: Array.isArray(response.items) ? response.items : [],
+        loading: false
+      };
+      renderSessionOverview();
+    } catch (error) {
+      state.sessionOverview = { count: 0, items: [], loading: false };
+      renderSessionOverview();
+      showToast(error.message || 'فشل تحميل الجلسات النشطة.', 'error');
+    }
+  };
+
+  window.logoutOtherSessions = async function logoutOtherSessions() {
+    if (!state.currentUser || !state.backend?.available) {
+      return;
+    }
+
+    try {
+      const response = await requestJson('/api/auth/logout-others', { method: 'POST' });
+      await window.refreshSessionOverview();
+      showToast(`تم إنهاء ${response.revokedCount || 0} جلسة أخرى بنجاح.`, 'success');
+    } catch (error) {
+      showToast(error.message || 'فشل إنهاء الجلسات الأخرى.', 'error');
+    }
+  };
+
   window.handleLogoSelect = async function handleLogoSelectEnhanced(event) {
     if (typeof previousHandleLogoSelect === 'function') {
       await previousHandleLogoSelect(event);
@@ -2063,6 +2172,9 @@
 
   window.loadAllData = async function loadAllDataFinal() {
     await permissionAwareLoadAllData();
+    if (!state.currentUser || !state.backend?.available) {
+      state.sessionOverview = { count: 0, items: [], loading: false };
+    }
     applyPermissionUI();
   };
 
@@ -2071,6 +2183,7 @@
     ensureHeaderStatusBadge();
     ensureCustomLogoUpload();
     renderHeaderStatusBadge();
+    renderSessionOverview();
     applyPermissionUI();
   };
 
@@ -2088,6 +2201,7 @@
       ensureCustomLogoUpload();
       renderAccountSecuritySummary();
       applySettingsPermissions();
+      window.refreshSessionOverview();
     }
     applyPermissionUI();
   };
@@ -2136,6 +2250,9 @@
     window.renderDashboard();
     if (state.view === 'users') {
       window.renderUsersView();
+    }
+    if (state.currentUser && state.backend?.available) {
+      window.refreshSessionOverview();
     }
     applyPermissionUI();
   };

@@ -282,6 +282,75 @@
   font-size: 11px;
 }
 
+.settings-summary-item.wide {
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+.session-overview {
+  margin-bottom: 14px;
+}
+
+.session-overview-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(122, 143, 181, 0.16);
+  background: rgba(10, 16, 29, 0.62);
+}
+
+.session-overview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--vf-text);
+}
+
+.session-overview-head span,
+.session-overview-copy,
+.session-list-meta {
+  color: var(--vf-text-muted);
+  font-size: 12px;
+}
+
+.session-overview-copy {
+  line-height: 1.8;
+}
+
+.session-list {
+  display: grid;
+  gap: 10px;
+}
+
+.session-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(122, 143, 181, 0.06);
+  border: 1px solid rgba(122, 143, 181, 0.12);
+}
+
+.session-list-item.current {
+  border-color: rgba(59, 130, 246, 0.24);
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.session-list-title {
+  color: var(--vf-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.account-session-actions {
+  margin-top: 0;
+  margin-bottom: 18px;
+}
+
 .report-stage {
   position: fixed;
   inset-inline-start: -10000px;
@@ -914,5 +983,14 @@ body {
     flex: 1;
     text-align: center;
     justify-content: center;
+  }
+
+  .session-list-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .session-list-item .badge {
+    align-self: flex-start;
   }
 }

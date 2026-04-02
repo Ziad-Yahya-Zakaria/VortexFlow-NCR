@@ -65,7 +65,7 @@ module.exports = async (req, res) => {
       WHERE id = ${userRow.id}
     `;
 
-    await createSession(res, userRow.id);
+    await createSession(req, res, userRow.id);
 
     sendJson(res, 200, {
       user: sanitizeUser({

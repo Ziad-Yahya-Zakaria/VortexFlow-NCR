@@ -71,7 +71,7 @@ module.exports = async (req, res) => {
         last_login_at
     `;
 
-    await createSession(res, id);
+    await createSession(req, res, id);
 
     await logActivity({
       entityType: 'user',

@@ -1000,7 +1000,7 @@
       : 'سجّل الدخول للوصول إلى البيانات المشتركة وإدارة المستخدمين والتقارير.';
     stateBanner.textContent = setupMode
       ? 'Vercel Backend جاهز لكن لا يوجد مستخدمون بعد.'
-      : 'يتم استخدام جلسة آمنة عبر API محلي على نفس الدومين.';
+      : 'يتم استخدام جلسات آمنة ومستقلة لكل مستخدم عبر Backend مركزي على نفس الدومين. كل جهاز أو متصفح يحتفظ بجلسة منفصلة.';
     nameGroup.classList.toggle('hidden', !setupMode);
     submit.textContent = setupMode ? 'إنشاء الحساب' : 'تسجيل الدخول';
   }
@@ -1024,7 +1024,7 @@
       : 'سجّل الدخول للوصول إلى البيانات المشتركة وإدارة المستخدمين والتقارير.';
     const bannerText = setupMode
       ? 'Vercel Backend جاهز لكن لا يوجد مستخدمون بعد.'
-      : 'يتم استخدام جلسة آمنة عبر API محلي على نفس الدومين.';
+      : 'يتم استخدام جلسات آمنة ومستقلة لكل مستخدم عبر Backend مركزي على نفس الدومين. كل جهاز أو متصفح يحتفظ بجلسة منفصلة.';
 
     const modalTitle = document.getElementById('auth-modal-title');
     const modalNote = document.getElementById('auth-note');
