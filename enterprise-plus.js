@@ -259,6 +259,24 @@
     return state.currentUser?.role || 'guest';
   }
 
+  function formatLastSyncSafe(timestamp) {
+    if (!timestamp) {
+      return 'لم تتم مزامنة بعد';
+    }
+
+    try {
+      return new Date(timestamp).toLocaleString('ar-EG', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (_) {
+      return 'غير متاح';
+    }
+  }
+
   function canAccessView(view) {
     const role = getCurrentRole();
     const matrix = {
@@ -316,7 +334,7 @@
       tone: 'success',
       icon: 'fa-cloud',
       label: 'متصل',
-      detail: `آخر مزامنة: ${formatLastSync(state.backend.lastSyncAt)}`
+      detail: `آخر مزامنة: ${formatLastSyncSafe(state.backend.lastSyncAt)}`
     };
   }
 
@@ -1656,13 +1674,28 @@
       return;
     }
 
+    ensureUserEnhancements();
     state.managingUserId = id;
-    document.getElementById('ua-full-name').value = user.fullName || '';
-    document.getElementById('ua-role').value = user.role || 'viewer';
-    document.getElementById('ua-password').value = '';
-    document.getElementById('ua-is-active').checked = !!user.isActive;
-    document.getElementById('ua-job-title').value = user.jobTitle || '';
-    document.getElementById('ua-is-verified').checked = isUserVerified(user);
+    const fullNameInput = document.getElementById('ua-full-name');
+    const roleInput = document.getElementById('ua-role');
+    const passwordInput = document.getElementById('ua-password');
+    const activeInput = document.getElementById('ua-is-active');
+    const jobTitleInput = document.getElementById('ua-job-title');
+    const verifiedInput = document.getElementById('ua-is-verified');
+    if (!fullNameInput || !roleInput || !passwordInput || !activeInput) {
+      showToast('تعذر تحميل نموذج إدارة المستخدم الآن.', 'error');
+      return;
+    }
+    fullNameInput.value = user.fullName || '';
+    roleInput.value = user.role || 'viewer';
+    passwordInput.value = '';
+    activeInput.checked = !!user.isActive;
+    if (jobTitleInput) {
+      jobTitleInput.value = user.jobTitle || '';
+    }
+    if (verifiedInput) {
+      verifiedInput.checked = isUserVerified(user);
+    }
     openModal('user-admin-modal');
   };
 
@@ -1673,15 +1706,25 @@
       return;
     }
 
+    ensureUserEnhancements();
+    const fullNameInput = document.getElementById('ua-full-name');
+    const roleInput = document.getElementById('ua-role');
+    const activeInput = document.getElementById('ua-is-active');
+    const passwordInput = document.getElementById('ua-password');
+    if (!fullNameInput || !roleInput || !activeInput || !passwordInput) {
+      showToast('نموذج إدارة الحساب غير جاهز.', 'error');
+      return;
+    }
+
     const payload = {
-      fullName: document.getElementById('ua-full-name').value.trim(),
-      role: document.getElementById('ua-role').value,
-      isActive: !!document.getElementById('ua-is-active').checked,
+      fullName: fullNameInput.value.trim(),
+      role: roleInput.value,
+      isActive: !!activeInput.checked,
       jobTitle: document.getElementById('ua-job-title')?.value.trim() || null,
       isVerified: !!document.getElementById('ua-is-verified')?.checked
     };
 
-    const password = document.getElementById('ua-password').value.trim();
+    const password = passwordInput.value.trim();
     if (password) {
       payload.password = password;
     }

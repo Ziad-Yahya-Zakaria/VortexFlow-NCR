@@ -3,7 +3,7 @@
    Cache-first strategy with background refresh
    ============================================================ */
 
-const CACHE_VERSION = 'vortexflow-ncr-v2.3.0';
+const CACHE_VERSION = 'vortexflow-ncr-v2.3.1';
 const PRECACHE_URLS = [
   './index.html',
   './style.css',
@@ -55,7 +55,6 @@ self.addEventListener('fetch', event => {
   if (url.pathname.startsWith('/api/')) return;
   const isSameOrigin = url.origin === self.location.origin;
   const isTrustedCDN = [
-    'cdn.tailwindcss.com',
     'cdnjs.cloudflare.com',
     'cdn.jsdelivr.net',
     'unpkg.com',
