@@ -3,11 +3,13 @@
    Cache-first strategy with background refresh
    ============================================================ */
 
-const CACHE_VERSION = 'vortexflow-ncr-v1.0.0';
+const CACHE_VERSION = 'vortexflow-ncr-v2.0.0';
 const PRECACHE_URLS = [
   './index.html',
   './style.css',
+  './enterprise.css',
   './app.js',
+  './enterprise.js',
   './manifest.json'
 ];
 
@@ -46,6 +48,7 @@ self.addEventListener('fetch', event => {
 
   // Skip cross-origin requests that aren't CDN resources
   const url = new URL(event.request.url);
+  if (url.pathname.startsWith('/api/')) return;
   const isSameOrigin = url.origin === self.location.origin;
   const isTrustedCDN = [
     'cdn.tailwindcss.com',

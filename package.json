@@ -1,0 +1,12 @@
+{
+  "name": "vortexflow-ncr",
+  "private": true,
+  "version": "2.0.0",
+  "description": "VortexFlow NCR system with Vercel serverless API and PostgreSQL support.",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "postgres": "^3.4.5"
+  }
+}

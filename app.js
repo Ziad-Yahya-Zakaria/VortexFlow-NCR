@@ -14,6 +14,7 @@ const APP_CONFIG = {
   appName: 'VortexFlow NCR',
   storageName: 'VortexFlowNCR',
   firstVisitKey: 'vf_ncr_first_visit_done',
+  enableSampleData: false,
   SLA_WARNING_DAYS: 3,
   SLA_CRITICAL_DAYS: 5,
   MONTHS_AR: ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'],
@@ -1920,6 +1921,7 @@ function startSLATimer() {
    ============================================================ */
 
 async function seedSampleData() {
+  if (!APP_CONFIG.enableSampleData) return;
   if (state.ncrs.length > 0 || state.departments.length > 0) return;
 
   try {
@@ -2016,16 +2018,8 @@ async function init() {
     // 2. Load all data from IndexedDB
     await loadAllData();
 
-    // 3. Seed sample data for first-time users
-    await seedSampleData();
-
-    // 4. Reload state after seeding
-    if (state.ncrs.length === 0 && state.departments.length === 0) {
-      await loadAllData();
-    } else {
-      // Re-sort after potential seed
-      await loadAllData();
-    }
+    // 3. Reload state after initial load
+    await loadAllData();
 
     // 5. Render initial view
     renderMonthFilter();
@@ -2058,7 +2052,10 @@ async function init() {
 }
 
 // Bootstrap the application
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', () => {
+  const bootstrap = window.VortexFlowBootstrap || init;
+  bootstrap();
+});
 
 // Handle visibility change (refresh SLA when tab becomes visible)
 document.addEventListener('visibilitychange', () => {
@@ -2066,4 +2063,94 @@ document.addEventListener('visibilitychange', () => {
     renderNCRList();
     renderStats();
   }
+});
+
+Object.assign(window, {
+  APP_CONFIG,
+  state,
+  ncrStore,
+  deptStore,
+  invStore,
+  generateId,
+  generateCaseNumber,
+  calculateElapsedDays,
+  formatDate,
+  formatDateTime,
+  fileToBase64,
+  getSLAStatus,
+  getStatusBadge,
+  getInitials,
+  getDeptName,
+  loadAllData,
+  saveNCR,
+  updateNCR,
+  deleteNCR,
+  saveDepartment,
+  updateDepartment,
+  deleteDepartment,
+  saveInvitation,
+  deleteInvitation,
+  getFilteredNCRs,
+  getStats,
+  renderDashboard,
+  renderStats,
+  renderNCRList,
+  renderNCRCard,
+  renderDepartments,
+  renderDeptList,
+  renderInvitations,
+  populateDeptSelects,
+  renderMonthFilter,
+  navigateTo,
+  prepareAddNCRForm,
+  handleNCRFormSubmit,
+  cancelNCRForm,
+  editNCR,
+  quickAddNCR,
+  handleFileSelect,
+  renderFilePreview,
+  removeFile,
+  setColorPreset,
+  setStatusFilter,
+  setMonthFilter,
+  handleSearch,
+  openNCRDetail,
+  closeNCRDetailModal,
+  editNCRFromDetail,
+  openInviteFromDetail,
+  openInviteModal,
+  closeInviteModal,
+  handleInviteSubmit,
+  handleDeptFormSubmit,
+  editDept,
+  cancelDeptEdit,
+  openModal,
+  closeModal,
+  openExportSheet,
+  closeExportSheet,
+  confirmDeleteNCR,
+  confirmDeleteDept,
+  confirmDeleteInvitation,
+  getExportData,
+  exportToPDF,
+  exportToXLSX,
+  exportToPPTX,
+  exportToZIP,
+  shareNCR,
+  shareAppSummary,
+  backupAllData,
+  triggerRestore,
+  restoreFromBackup,
+  showToast,
+  checkFirstVisit,
+  completeOnboarding,
+  registerServiceWorker,
+  refreshApp,
+  initKeyboardShortcuts,
+  initSwipeGestures,
+  initFileDragDrop,
+  startSLATimer,
+  seedSampleData,
+  init,
+  escapeHTML
 });

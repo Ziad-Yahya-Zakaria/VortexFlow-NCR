@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#f59e0b">
-  <meta name="description" content="نظام تتبع تقارير عدم المطابقة | Non-Conformance Report Tracking">
+  <meta name="description" content="نظام NCR مؤسسي لإدارة تقارير عدم المطابقة مع طباعة، تخصيص، مستخدمين، وخيارات تشغيل متقدمة">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -23,6 +23,7 @@
 
   <!-- Custom Styles -->
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="enterprise.css">
 
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -52,35 +53,35 @@
 
       <div class="welcome-app-name">VortexFlow NCR</div>
       <div class="welcome-tagline">نظام تتبع تقارير عدم المطابقة</div>
-      <div class="welcome-subtitle">ZiadPWA Ecosystem • v1.0.0</div>
+      <div class="welcome-subtitle">Enterprise NCR Workspace • v2.1.0</div>
 
       <div class="welcome-features">
         <div class="welcome-feature">
           <i class="fas fa-wifi-slash" aria-hidden="true"></i>
-          <span>يعمل 100% بدون إنترنت — Fully Offline</span>
+          <span>يدعم العمل المحلي مع إمكانية الربط الفوري بقاعدة بيانات</span>
         </div>
         <div class="welcome-feature">
           <i class="fas fa-database" aria-hidden="true"></i>
-          <span>يحفظ البيانات محلياً في جهازك — Local Storage</span>
+          <span>لا توجد بيانات Demo إجبارية داخل النظام</span>
         </div>
         <div class="welcome-feature">
           <i class="fas fa-image" aria-hidden="true"></i>
-          <span>الصور والمستندات تُحفظ داخل قاعدة البيانات</span>
+          <span>طباعة وتقارير وتخصيصات تشغيل قابلة للتعديل</span>
         </div>
         <div class="welcome-feature">
           <i class="fas fa-shield-alt" aria-hidden="true"></i>
-          <span>نسخ احتياطي كامل مع حماية البيانات</span>
+          <span>أدوار مستخدمين وصلاحيات وسجل نشاط للتغييرات</span>
         </div>
         <div class="welcome-feature">
           <i class="fas fa-clock" aria-hidden="true"></i>
-          <span>تتبع SLA تلقائي مع تنبيهات بصرية</span>
+          <span>متابعة SLA وتنبيهات وقوالب NCR قابلة لإعادة الاستخدام</span>
         </div>
       </div>
 
       <p class="welcome-note">
-        سيطلب التطبيق إذناً لحفظ البيانات بشكل دائم على جهازك.
-        هذا يمنع نظام التشغيل من حذف بياناتك عند امتلاء مساحة التخزين.
-        <strong style="color:var(--vf-amber)">يُنصح بالموافقة للحفاظ على بياناتك.</strong>
+        النظام يبدأ فارغاً بدون حالات افتراضية، ويمكن تخصيصه لاسم الشركة وقواعد العمل والطباعة
+        وربطه لاحقاً بـ Vercel و PostgreSQL بدون تغيير الواجهة الأساسية.
+        <strong style="color:var(--vf-amber)">ابدأ بإعداداتك الفعلية وليس ببيانات تجريبية.</strong>
       </p>
 
       <button id="btn-start-app" class="btn btn-primary btn-block btn-lg" onclick="completeOnboarding()">
@@ -106,14 +107,17 @@
       </div>
 
       <div class="header-actions">
+        <button class="icon-btn" onclick="printCurrentReport()" title="طباعة" aria-label="طباعة">
+          <i class="fas fa-print" aria-hidden="true"></i>
+        </button>
         <button class="icon-btn amber" onclick="openExportSheet()" title="تصدير وبيانات" aria-label="فتح قائمة التصدير">
           <i class="fas fa-share-nodes" aria-hidden="true"></i>
         </button>
         <button class="icon-btn" id="btn-sw-update" onclick="refreshApp()" title="تحديث التطبيق" aria-label="تحديث" style="display:none">
           <i class="fas fa-rotate" aria-hidden="true"></i>
         </button>
-        <button class="icon-btn" onclick="openExportSheet()" title="المزيد" aria-label="المزيد من الخيارات">
-          <i class="fas fa-ellipsis-vertical" aria-hidden="true"></i>
+        <button class="icon-btn" onclick="navigateTo('settings')" title="الإعدادات" aria-label="الإعدادات">
+          <i class="fas fa-sliders" aria-hidden="true"></i>
         </button>
       </div>
     </header>
@@ -207,6 +211,35 @@
           <div class="view-heading" id="form-view-heading">تقرير عدم مطابقة NCR</div>
 
           <form id="ncr-form" novalidate onsubmit="handleNCRFormSubmit(event)">
+            <div class="section-card" style="margin:0 0 16px;padding:14px">
+              <div class="section-card-head" style="margin-bottom:10px">
+                <div>
+                  <div class="section-card-title">قوالب التقرير</div>
+                  <div class="section-card-subtitle">اختر قالباً جاهزاً أو طبّق تخصيصاتك اليدوية</div>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="f-template-select">القالب</label>
+                  <select id="f-template-select" class="form-control">
+                    <option value="">-- بدون قالب --</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">&nbsp;</label>
+                  <div class="btn-group" style="margin-top:0">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="applySelectedTemplate()">
+                      <i class="fas fa-layer-group" aria-hidden="true"></i>
+                      تطبيق القالب
+                    </button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="saveCurrentAsTemplate()">
+                      <i class="fas fa-floppy-disk" aria-hidden="true"></i>
+                      حفظ كقالب
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             <div class="form-section-title">
               <i class="fas fa-hashtag" aria-hidden="true"></i>
@@ -388,6 +421,180 @@
         </div>
       </section>
 
+      <!-- ==========================================
+           VIEW: SETTINGS
+           ========================================== -->
+      <section id="view-settings" class="view" role="region" aria-label="الإعدادات">
+        <div class="dashboard-hero" style="padding-bottom:20px">
+          <div class="view-title">Settings</div>
+          <div class="view-heading">التخصيص والطباعة وقواعد النظام</div>
+        </div>
+
+        <div class="settings-layout">
+          <div class="section-card">
+            <div class="section-card-head">
+              <div>
+                <div class="section-card-title">إعدادات المؤسسة</div>
+                <div class="section-card-subtitle">اسم الجهة وتهيئة أرقام الحالات والألوان</div>
+              </div>
+            </div>
+            <form id="settings-form" onsubmit="handleSettingsSubmit(event)">
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="s-org-name">اسم الجهة</label>
+                  <input id="s-org-name" class="form-control" type="text" placeholder="مثال: Vortex Manufacturing">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="s-site-name">الموقع / المصنع</label>
+                  <input id="s-site-name" class="form-control" type="text" placeholder="مثال: Plant A">
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="s-case-prefix">بادئة رقم الحالة</label>
+                  <input id="s-case-prefix" class="form-control font-mono" type="text" dir="ltr" placeholder="NCR">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="s-accent-color">اللون الرئيسي</label>
+                  <input id="s-accent-color" class="form-control" type="color" value="#f59e0b">
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="s-sla-warning">SLA Warning بالأيام</label>
+                  <input id="s-sla-warning" class="form-control" type="number" min="1" value="3" dir="ltr">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="s-sla-critical">SLA Critical بالأيام</label>
+                  <input id="s-sla-critical" class="form-control" type="number" min="1" value="5" dir="ltr">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="s-print-subtitle">عنوان الطباعة الفرعي</label>
+                <input id="s-print-subtitle" class="form-control" type="text" placeholder="مثال: سجل تقارير عدم المطابقة">
+              </div>
+
+              <div class="toggle-grid">
+                <label class="setting-toggle">
+                  <input id="s-show-onboarding" type="checkbox" checked>
+                  <span>إظهار شاشة الترحيب</span>
+                </label>
+                <label class="setting-toggle">
+                  <input id="s-compact-print" type="checkbox" checked>
+                  <span>تفعيل طباعة مضغوطة</span>
+                </label>
+                <label class="setting-toggle">
+                  <input id="s-auto-print-save" type="checkbox">
+                  <span>الطباعة بعد حفظ التقرير</span>
+                </label>
+              </div>
+
+              <div class="btn-group">
+                <button type="button" class="btn btn-secondary" onclick="resetCustomization()">
+                  <i class="fas fa-rotate-left" aria-hidden="true"></i>
+                  إعادة الضبط
+                </button>
+                <button type="submit" class="btn btn-primary">
+                  <i class="fas fa-sliders" aria-hidden="true"></i>
+                  حفظ الإعدادات
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div class="section-card">
+            <div class="section-card-head">
+              <div>
+                <div class="section-card-title">قوالب NCR</div>
+                <div class="section-card-subtitle">إنشاء قوالب للحالات المتكررة</div>
+              </div>
+            </div>
+            <form id="template-form" onsubmit="handleTemplateSubmit(event)">
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label required" for="t-name">اسم القالب</label>
+                  <input id="t-name" class="form-control" type="text" required placeholder="مثال: عيوب اللحام">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="t-priority">الأولوية الافتراضية</label>
+                  <select id="t-priority" class="form-control">
+                    <option value="Medium">متوسطة</option>
+                    <option value="Low">منخفضة</option>
+                    <option value="High">مرتفعة</option>
+                    <option value="Critical">حرجة</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="t-severity">التأثير</label>
+                  <select id="t-severity" class="form-control">
+                    <option value="Major">جوهري</option>
+                    <option value="Minor">طفيف</option>
+                    <option value="Critical">حرج</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="t-tags">وسوم</label>
+                  <input id="t-tags" class="form-control" type="text" placeholder="مثل: لحام, QA">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="t-description">وصف افتراضي</label>
+                <textarea id="t-description" class="form-control" rows="2" placeholder="وصف مختصر للقالب"></textarea>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="t-root-cause">سبب جذري افتراضي</label>
+                <textarea id="t-root-cause" class="form-control" rows="2"></textarea>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="t-corrective-action">إجراء تصحيحي افتراضي</label>
+                <textarea id="t-corrective-action" class="form-control" rows="2"></textarea>
+              </div>
+
+              <div class="btn-group">
+                <button type="submit" class="btn btn-primary">
+                  <i class="fas fa-plus" aria-hidden="true"></i>
+                  حفظ القالب
+                </button>
+              </div>
+            </form>
+            <div id="template-list" class="template-list" style="margin-top:14px"></div>
+          </div>
+
+          <div class="section-card">
+            <div class="section-card-head">
+              <div>
+                <div class="section-card-title">الطباعة والتقارير</div>
+                <div class="section-card-subtitle">طباعة فورية وتنسيق إخراج أقوى</div>
+              </div>
+            </div>
+            <div class="settings-actions">
+              <button type="button" class="btn btn-primary" onclick="printCurrentReport()">
+                <i class="fas fa-print" aria-hidden="true"></i>
+                طباعة الفلتر الحالي
+              </button>
+              <button type="button" class="btn btn-outline" onclick="printDetailReport()">
+                <i class="fas fa-file-lines" aria-hidden="true"></i>
+                طباعة التقرير المفتوح
+              </button>
+              <button type="button" class="btn btn-secondary" onclick="openExportSheet()">
+                <i class="fas fa-share-nodes" aria-hidden="true"></i>
+                تصدير ونسخ احتياطي
+              </button>
+            </div>
+            <div id="settings-summary" class="settings-summary"></div>
+          </div>
+        </div>
+      </section>
+
     </main><!-- /main-content -->
 
     <!-- FAB (Floating Action Button) -->
@@ -408,6 +615,10 @@
       <button class="nav-item" id="nav-departments" data-view="departments" onclick="navigateTo('departments')" aria-label="الأقسام">
         <i class="fas fa-building" aria-hidden="true"></i>
         <span>الأقسام</span>
+      </button>
+      <button class="nav-item" id="nav-settings" data-view="settings" onclick="navigateTo('settings')" aria-label="الإعدادات">
+        <i class="fas fa-sliders" aria-hidden="true"></i>
+        <span>الإعدادات</span>
       </button>
     </nav>
 
@@ -517,6 +728,10 @@
           <i class="fas fa-file-pdf" aria-hidden="true"></i>
           <span>PDF</span>
         </button>
+        <button class="export-btn share" onclick="printCurrentReport()" aria-label="طباعة">
+          <i class="fas fa-print" aria-hidden="true"></i>
+          <span>طباعة</span>
+        </button>
         <button class="export-btn xlsx" onclick="exportToXLSX()" aria-label="تصدير Excel">
           <i class="fas fa-file-excel" aria-hidden="true"></i>
           <span>Excel (XLSX)</span>
@@ -561,6 +776,7 @@
 
   <!-- Toast Notification Container -->
   <div id="toast-container" role="region" aria-label="الإشعارات" aria-live="polite"></div>
+  <section id="print-root" class="print-root" aria-hidden="true"></section>
 
   <!-- ============================================================
        EXTERNAL LIBRARIES (CDN)
@@ -589,6 +805,7 @@
 
   <!-- Main Application Script -->
   <script src="app.js"></script>
+  <script src="enterprise.js"></script>
 
 </body>
 </html>

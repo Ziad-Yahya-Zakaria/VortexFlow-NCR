@@ -1577,7 +1577,46 @@ select.form-control {
 
 /* ---- PRINT ---- */
 @media print {
-  #bottom-nav, #fab, #toast-container, .modal-overlay, .bottom-sheet-overlay { display: none; }
-  body { background: white; color: black; }
-  .ncr-card { border: 1px solid #ccc; break-inside: avoid; }
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  body.print-mode {
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  body.print-mode > *:not(#print-root) {
+    display: none !important;
+  }
+
+  body.print-mode #print-root {
+    display: block !important;
+  }
+
+  #bottom-nav,
+  #fab,
+  #toast-container,
+  .modal-overlay,
+  .bottom-sheet-overlay,
+  #welcome-modal {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+    color: black;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .ncr-card,
+  .detail-field,
+  .section-card,
+  .template-card,
+  .print-detail-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
 }
