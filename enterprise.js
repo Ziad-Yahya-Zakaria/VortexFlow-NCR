@@ -41,7 +41,7 @@
   };
 
   Object.assign(APP_CONFIG, {
-    version: '2.3.2',
+    version: '2.3.3',
     MAX_LOCAL_FILE_SIZE: 10 * 1024 * 1024,
     MAX_REMOTE_FILE_SIZE: 3 * 1024 * 1024,
     PRIORITY_LABELS: {
@@ -1582,7 +1582,7 @@
   };
 
   function readAsDataUrl(file) {
-    return (async () => {
+    return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result);
       reader.onerror = () => reject(new Error('فشل في قراءة الملف'));
@@ -1591,7 +1591,7 @@
   }
 
   function loadImageElement(objectUrl) {
-    return (async () => {
+    return new Promise((resolve, reject) => {
       const image = new Image();
       image.onload = () => resolve(image);
       image.onerror = () => reject(new Error('فشل في معالجة الصورة'));
@@ -1600,13 +1600,16 @@
   }
 
   async function optimizeImageForRemote(file) {
-    if (!isRemoteMode() || !(file?.type || '').startsWith('image/')) {
+    if (!isRemoteMode() || !(file?.type || '').startsWith('image/') || file.type === 'image/svg+xml') {
       return file;
     }
 
     const objectUrl = URL.createObjectURL(file);
     try {
       const image = await loadImageElement(objectUrl);
+      if (!(image instanceof HTMLImageElement) || !Number.isFinite(image.width) || !Number.isFinite(image.height) || image.width <= 0 || image.height <= 0) {
+        return file;
+      }
       const maxDimension = 1800;
       const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
       if (scale >= 1 && file.size <= 1.5 * 1024 * 1024) {
@@ -1622,6 +1625,7 @@
         return file;
       }
 
+      context.clearRect(0, 0, canvas.width, canvas.height);
       context.drawImage(image, 0, 0, canvas.width, canvas.height);
 
       const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.82));
@@ -1634,6 +1638,8 @@
         type: 'image/jpeg',
         lastModified: Date.now()
       });
+    } catch (_) {
+      return file;
     } finally {
       URL.revokeObjectURL(objectUrl);
     }

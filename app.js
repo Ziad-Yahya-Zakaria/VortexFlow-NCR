@@ -10,7 +10,7 @@
    SECTION 1: CONFIGURATION & CONSTANTS
    ============================================================ */
 const APP_CONFIG = {
-  version: '1.0.0',
+  version: '2.3.3',
   appName: 'VortexFlow NCR',
   storageName: 'VortexFlowNCR',
   firstVisitKey: 'vf_ncr_first_visit_done',
@@ -1907,6 +1907,133 @@ function initFileDragDrop() {
     }
   });
 }
+
+initSwipeGestures = function initSwipeGesturesEnhanced() {
+  if (document.body?.dataset.vfSwipeGesturesReady === '1') {
+    return;
+  }
+  if (document.body) {
+    document.body.dataset.vfSwipeGesturesReady = '1';
+  }
+
+  let pointerStartX = 0;
+  let pointerStartY = 0;
+  let currentCard = null;
+  let pointerStartTarget = null;
+  let activePointerId = null;
+  let isDragging = false;
+  let isScrolling = false;
+
+  const interactiveSelector = 'button, a, input, select, textarea, label, .btn, .icon-btn, .card-action-btn, .verify-badge, .checklist-toggle';
+
+  function resetSwipeState() {
+    if (currentCard) {
+      currentCard.style.transform = '';
+      currentCard.style.opacity = '';
+    }
+    currentCard = null;
+    pointerStartTarget = null;
+    activePointerId = null;
+    isDragging = false;
+    isScrolling = false;
+  }
+
+  document.addEventListener('pointerdown', event => {
+    if (event.pointerType === 'mouse' && event.button !== 0) {
+      return;
+    }
+
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      resetSwipeState();
+      return;
+    }
+
+    if (target.closest(interactiveSelector)) {
+      resetSwipeState();
+      return;
+    }
+
+    const card = target.closest('.ncr-card');
+    if (!card) {
+      resetSwipeState();
+      return;
+    }
+
+    pointerStartX = event.clientX;
+    pointerStartY = event.clientY;
+    pointerStartTarget = target;
+    currentCard = card;
+    activePointerId = event.pointerId;
+    isDragging = false;
+    isScrolling = false;
+  }, { passive: true });
+
+  document.addEventListener('pointermove', event => {
+    if (!currentCard || activePointerId !== event.pointerId) {
+      return;
+    }
+
+    const dx = event.clientX - pointerStartX;
+    const dy = event.clientY - pointerStartY;
+
+    if (!isDragging && !isScrolling) {
+      if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) {
+        isScrolling = true;
+        currentCard.style.transform = '';
+        currentCard.style.opacity = '';
+        return;
+      }
+
+      if (Math.abs(dx) > 18 && Math.abs(dx) > Math.abs(dy) * 1.15) {
+        isDragging = true;
+      }
+    }
+
+    if (!isDragging) {
+      return;
+    }
+
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+
+    const clampedDx = Math.max(-104, Math.min(0, dx));
+    currentCard.style.transform = `translateX(${clampedDx}px)`;
+    currentCard.style.opacity = String(Math.max(0.72, 1 + clampedDx / 220));
+  }, { passive: false });
+
+  document.addEventListener('pointerup', event => {
+    if (!currentCard || activePointerId !== event.pointerId) {
+      return;
+    }
+
+    const dx = event.clientX - pointerStartX;
+    const dy = event.clientY - pointerStartY;
+    const ncrId = currentCard.dataset.id;
+    const startTarget = pointerStartTarget;
+
+    currentCard.style.transform = '';
+    currentCard.style.opacity = '';
+
+    if (isDragging && dx < -68) {
+      resetSwipeState();
+      if (ncrId) {
+        setTimeout(() => confirmDeleteNCR(ncrId), 90);
+      }
+      return;
+    }
+
+    const isTap = !isDragging && !isScrolling && Math.abs(dx) < 6 && Math.abs(dy) < 6;
+    resetSwipeState();
+
+    if (isTap && ncrId && !startTarget?.closest(interactiveSelector)) {
+      openNCRDetail(ncrId);
+    }
+  }, { passive: true });
+
+  document.addEventListener('pointercancel', resetSwipeState, { passive: true });
+};
 
 /* ============================================================
    SECTION 24: SLA PERIODIC UPDATE

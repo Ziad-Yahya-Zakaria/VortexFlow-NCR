@@ -424,6 +424,12 @@ body::before {
   position: relative;
   box-shadow: var(--shadow-card);
   cursor: pointer;
+  touch-action: pan-y;
+  -ms-touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  will-change: transform;
 }
 
 .ncr-card:hover, .ncr-card:active {

@@ -3,21 +3,21 @@
    Cache-first strategy with background refresh
    ============================================================ */
 
-const CACHE_VERSION = 'vortexflow-ncr-v2.3.2';
+const CACHE_VERSION = 'vortexflow-ncr-v2.3.3';
 const PRECACHE_URLS = [
   './index.html',
   './style.css',
   './enterprise.css',
   './enterprise-plus.css',
-  './style.css?v=2.3.2',
-  './enterprise.css?v=2.3.2',
-  './enterprise-plus.css?v=2.3.2',
+  './style.css?v=2.3.3',
+  './enterprise.css?v=2.3.3',
+  './enterprise-plus.css?v=2.3.3',
   './app.js',
   './enterprise.js',
   './enterprise-plus.js',
-  './app.js?v=2.3.2',
-  './enterprise.js?v=2.3.2',
-  './enterprise-plus.js?v=2.3.2',
+  './app.js?v=2.3.3',
+  './enterprise.js?v=2.3.3',
+  './enterprise-plus.js?v=2.3.3',
   './manifest.json',
   './assets/icons/vortexflow-ncr-icon.svg',
   './assets/icons/vortexflow-ncr-maskable.svg'

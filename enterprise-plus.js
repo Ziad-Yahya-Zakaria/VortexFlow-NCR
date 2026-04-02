@@ -11,6 +11,11 @@
   const DEMO_ASSIGNEES = new Set(['عبد الله علي', 'محمد الزهراني']);
   const REPORT_ROWS_PER_PAGE = 8;
   const SECRET_TAP_TARGET = 7;
+  const SECRET_COPY_HTML = `
+    <p>اهدا ياعم الحج انتا مفكر انك كده جامد انا دماغي وجعاني مش نقصاك انتا شكلك فاضي.</p>
+    <p>اهم حاجة تعرف حاجة واحدة بس الزوز هوا الزعيم وده رقم الزوز عشان لو عايز تتواصل معاه <a href="tel:01124148723">01124148723</a>.</p>
+    <p>الزوز هوا اللي مبرمج البرنامج ده هوا وفريق معاه تاني. ماشي في امان الله يابا سلام.</p>
+  `;
   const SECRET_MODAL_HTML = `
     <div id="secret-easter-egg-modal" class="secret-modal-overlay" aria-hidden="true">
       <div class="secret-modal-box">
@@ -915,6 +920,10 @@
   function ensureSecretModal() {
     if (!document.getElementById('secret-easter-egg-modal')) {
       document.body.insertAdjacentHTML('beforeend', SECRET_MODAL_HTML);
+    }
+    const copy = document.querySelector('#secret-easter-egg-modal .secret-modal-copy');
+    if (copy) {
+      copy.innerHTML = SECRET_COPY_HTML;
     }
   }
 
